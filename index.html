@@ -261,95 +261,616 @@ input:focus{border-color:#2196f3;outline:none;box-shadow:0 0 5px rgba(33,150,243
 <div id="celebration" class="correct-celebration"></div>
 
 <script>
-const $=id=>document.getElementById(id)||{style:{},textContent:'',innerHTML:'',value:'',classList:{add:()=>{},remove:()=>{}},appendChild:()=>{},remove:()=>{}};
-let state={score:0,level:1,prob:null,unit:"",mode:"",lvCount:0,totalQ:0,qNum:0,completed:new Set(),selectedComparison:null,selectQCount:0,startTime:null,timerInterval:null,hiddenQ:0};
-const monsters=["📊","🔢","🔲","🔄","⭐","⚖️","💡","🏃","👑"];
-const lvNames=["分数×整数","分数÷整数","分数×分数","帯分数×帯分数","分数×分数×分数","大小比較","逆数","時間の分数","分数の文章題"];
-let hiddenStageUnlocked=false;
-try{hiddenStageUnlocked=localStorage.getItem('hiddenStageUnlocked')==='true'}catch(e){}
-const titles={fractionMaster:{name:"分数マスター",description:"隠しステージを制覇した真の分数の達人",unlocked:false}};
+// 安全な要素取得関数
+function $(id) {
+    const el = document.getElementById(id);
+    if (!el) {
+        console.warn(`Element ${id} not found`);
+        return {
+            style: {},
+            textContent: '',
+            innerHTML: '',
+            value: '',
+            classList: {add:()=>{}, remove:()=>{}, contains:()=>false},
+            appendChild: ()=>{},
+            remove: ()=>{},
+            focus: ()=>{}
+        };
+    }
+    return el;
+}
 
-document.addEventListener('DOMContentLoaded',()=>{if(hiddenStageUnlocked){$("hiddenStageBtn").style.display="inline-block";$("hiddenModeInfo").style.display="block"}});
+// グローバル変数の初期化
+let state = {
+    score: 0,
+    level: 1,
+    prob: null,
+    unit: "",
+    mode: "",
+    lvCount: 0,
+    totalQ: 0,
+    qNum: 0,
+    completed: new Set(),
+    selectedComparison: null,
+    selectQCount: 0,
+    startTime: null,
+    timerInterval: null,
+    hiddenQ: 0
+};
 
-const gcd=(a,b)=>b?gcd(b,a%b):a;
-const R=(min,max)=>Math.floor(Math.random()*(max-min+1))+min;
-function simplify(n,d){if(d<0){n=-n;d=-d}const g=gcd(Math.abs(n),Math.abs(d));return[n/g,d/g]}
-function randFrac(maxN=10,maxD=10){let n,d;do{n=R(1,maxN);d=R(2,maxD)}while(gcd(n,d)!==1||n>=d);return[n,d]}
-function frac(n,d){return`<span class="fraction-display"><span class="numerator">${n}</span><span class="fraction-bar"></span><span class="denominator">${d}</span></span>`}
-function mixedFrac(w,n,d){if(n>=d){w+=Math.floor(n/d);n=n%d}return n===0?`${w}`:`${w} ${frac(n,d)}`}
-function formatAnswer(n,d,u=""){const[sn,sd]=simplify(n,d);return sd===1?sn+u:`${sn}/${sd}`+u}
-function formatTime(s){const m=Math.floor(s/60);return`${m.toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`}
+const monsters = ["📊","🔢","🔲","🔄","⭐","⚖️","💡","🏃","👑"];
+const lvNames = ["分数×整数","分数÷整数","分数×分数","帯分数×帯分数","分数×分数×分数","大小比較","逆数","時間の分数","分数の文章題"];
 
-function startTimer(){if(state.mode==='summary'||state.mode==='hidden'){state.startTime=Date.now();$("timerDisplay").style.display="block";state.timerInterval=setInterval(updateTimer,1000)}}
-function updateTimer(){if(state.startTime){const elapsed=Math.floor((Date.now()-state.startTime)/1000);$("timer").textContent=formatTime(elapsed)}}
-function stopTimer(){if(state.timerInterval){clearInterval(state.timerInterval);state.timerInterval=null}}
-function getElapsedTime(){return state.startTime?Math.floor((Date.now()-state.startTime)/1000):0}
+let hiddenStageUnlocked = false;
+try {
+    hiddenStageUnlocked = localStorage.getItem('hiddenStageUnlocked') === 'true';
+} catch(e) {
+    console.warn('LocalStorage not available');
+}
 
-function saveRanking(time){try{let rankings=JSON.parse(localStorage.getItem('fractionQuestRankings')||'[]');rankings.push({time,date:new Date().toISOString()});rankings.sort((a,b)=>a.time-b.time);rankings=rankings.slice(0,100);localStorage.setItem('fractionQuestRankings',JSON.stringify(rankings));return rankings}catch(e){return[]}}
+const titles = {
+    fractionMaster: {
+        name: "分数マスター",
+        description: "隠しステージを制覇した真の分数の達人",
+        unlocked: false
+    }
+};
 
-function displayRanking(currentTime){const rankings=saveRanking(currentTime);const currentRank=rankings.findIndex(r=>r.time===currentTime)+1;$("rankingDisplay").style.display="block";const rankingList=$("rankingList");rankingList.innerHTML="";const myRankDiv=document.createElement("div");myRankDiv.className="ranking-item current";myRankDiv.innerHTML=`<span><strong>あなたの順位: ${currentRank}位</strong></span><span><strong>${formatTime(currentTime)}</strong></span>`;rankingList.appendChild(myRankDiv);const medals=["🥇","🥈","🥉"];for(let i=0;i<Math.min(3,rankings.length);i++){const rankDiv=document.createElement("div");rankDiv.className="ranking-item";if(i===currentRank-1)rankDiv.classList.add("current");rankDiv.innerHTML=`<span><span class="rank-medal">${medals[i]}</span>${i+1}位</span><span>${formatTime(rankings[i].time)}</span>`;if(i<currentRank-1||currentRank>3)rankingList.appendChild(rankDiv)}}
+// 初期化
+window.addEventListener('load', function() {
+    if (hiddenStageUnlocked) {
+        $("hiddenStageBtn").style.display = "inline-block";
+        $("hiddenModeInfo").style.display = "block";
+    }
+});
 
-function createFireworks(){const celebration=$("celebration");celebration.innerHTML="";for(let i=0;i<15;i++){setTimeout(()=>{const firework=document.createElement("div");firework.className="firework";firework.style.left=Math.random()*window.innerWidth+"px";firework.style.top=Math.random()*window.innerHeight+"px";firework.style.background=`radial-gradient(circle, hsl(${Math.random()*360}, 100%, 50%), hsl(${Math.random()*360}, 100%, 70%))`;celebration.appendChild(firework);setTimeout(()=>firework.remove(),2000)},i*100)}for(let i=0;i<30;i++){setTimeout(()=>{const sparkle=document.createElement("div");sparkle.className="sparkle";sparkle.style.left=Math.random()*window.innerWidth+"px";sparkle.style.top=Math.random()*window.innerHeight+"px";celebration.appendChild(sparkle);setTimeout(()=>sparkle.remove(),1500)},i*50)}}
+// 数学関数
+const gcd = (a,b) => b ? gcd(b,a%b) : a;
+const R = (min,max) => Math.floor(Math.random()*(max-min+1))+min;
 
-function createMasterFireworks(){const celebration=$("celebration");celebration.innerHTML="";for(let i=0;i<50;i++){setTimeout(()=>{const firework=document.createElement("div");firework.className="firework";firework.style.left=Math.random()*window.innerWidth+"px";firework.style.top=Math.random()*window.innerHeight+"px";firework.style.background=`radial-gradient(circle, hsl(${Math.random()*360}, 100%, 50%), hsl(${(Math.random()*360+180)%360}, 100%, 70%))`;firework.style.animation=`firework ${2+Math.random()}s ease-out forwards`;celebration.appendChild(firework);setTimeout(()=>firework.remove(),3000)},i*50)}for(let i=0;i<100;i++){setTimeout(()=>{const star=document.createElement("div");star.innerHTML="⭐";star.style.position="absolute";star.style.left=Math.random()*window.innerWidth+"px";star.style.top=Math.random()*window.innerHeight+"px";star.style.fontSize=(10+Math.random()*20)+"px";star.style.animation=`sparkle ${1+Math.random()}s ease-out infinite`;star.style.pointerEvents="none";celebration.appendChild(star);setTimeout(()=>star.remove(),3000)},i*30)}}
+function simplify(n,d) {
+    if(d<0){n=-n;d=-d}
+    const g=gcd(Math.abs(n),Math.abs(d));
+    return[n/g,d/g];
+}
 
-function unlockTitle(titleKey){if(titles[titleKey]){titles[titleKey].unlocked=true;try{localStorage.setItem(`title_${titleKey}`,'true')}catch(e){}showTitleUnlock(titles[titleKey])}}
+function randFrac(maxN=10,maxD=10) {
+    let n,d;
+    do{n=R(1,maxN);d=R(2,maxD)}while(gcd(n,d)!==1||n>=d);
+    return[n,d];
+}
 
-function showTitleUnlock(title){const titleDiv=document.createElement('div');titleDiv.innerHTML=`<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:2000;display:flex;align-items:center;justify-content:center"><div style="background:linear-gradient(45deg,#ffd700,#ffed4e);padding:40px;border-radius:20px;text-align:center;border:5px solid #ff6b6b;animation:titleGlow 2s infinite"><h1 style="color:#d32f2f;font-size:36px;margin:0;text-shadow:2px 2px 4px rgba(0,0,0,0.5)">🏆 称号獲得！ 🏆</h1><div style="font-size:48px;margin:20px 0">👑</div><h2 style="color:#1976d2;font-size:28px;margin:10px 0">${title.name}</h2><p style="color:#333;font-size:16px;margin:0">${title.description}</p><button onclick="this.parentElement.parentElement.remove()" style="margin-top:20px;padding:12px 24px;font-size:18px;background:#4CAF50;color:white;border:none;border-radius:8px;cursor:pointer">確認</button></div></div>`;document.body.appendChild(titleDiv)}
+function frac(n,d) {
+    return`<span class="fraction-display"><span class="numerator">${n}</span><span class="fraction-bar"></span><span class="denominator">${d}</span></span>`;
+}
 
-function generateHiddenProblem(){const patterns=[()=>{const[n1,d1]=randFrac(12,15);const[n2,d2]=randFrac(12,15);const[n3,d3]=randFrac(8,12);return{q:`${frac(n1,d1)} × ${frac(n2,d2)} ÷ ${frac(n3,d3)} =`,n:n1*n2*d3,d:d1*d2*n3,type:'fraction',mixed:true}},()=>{const w1=R(2,5),d1=R(4,8),n1=R(1,d1-1);const w2=R(1,4),d2=R(3,7),n2=R(1,d2-1);const w3=R(1,3),d3=R(2,6),n3=R(1,d3-1);const i1=w1*d1+n1,i2=w2*d2+n2,i3=w3*d3+n3;return{q:`${mixedFrac(w1,n1,d1)} × ${mixedFrac(w2,n2,d2)} ÷ ${mixedFrac(w3,n3,d3)} =`,n:i1*i2*d3,d:d1*d2*i3,type:'fraction',mixed:true}},()=>{const total=R(24,48);const[n1,d1]=randFrac(6,12);const[n2,d2]=randFrac(4,8);return{q:`${total}個のお菓子があります。最初に全体の${frac(n1,d1)}を食べ、残りの${frac(n2,d2)}をさらに食べました。最後に残ったお菓子は何個ですか？`,n:total*(d1*d2-n1*d2-(d1-n1)*n2),d:d1*d2,u:"個",type:'fraction',mixed:true}}];return patterns[R(0,2)]()}
+function mixedFrac(w,n,d) {
+    if(n>=d){w+=Math.floor(n/d);n=n%d}
+    return n===0?`${w}`:`${w} ${frac(n,d)}`;
+}
 
-function setFocus(){setTimeout(()=>{if(state.prob?.type!=='comparison'){const input=$("mixedSection").style.display==="block"?$("md"):$("d");input.focus()}},150)}
+function formatAnswer(n,d,u="") {
+    const[sn,sd]=simplify(n,d);
+    return sd===1?sn+u:`${sn}/${sd}`+u;
+}
 
-document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.tagName==='INPUT'){e.preventDefault();if(e.target.id==='n'||e.target.id==='d')submitFraction();else if(['mw','mn','md'].includes(e.target.id))submitMixed();else if(e.target.id==='norm')submitNormal()}if(state.prob?.type==='comparison'){if(e.key==='1')selectComparison(document.querySelector('.comparison-btn[onclick*="left"]'),'left');else if(e.key==='2')selectComparison(document.querySelector('.comparison-btn[onclick*="right"]'),'right');else if(e.key==='3')selectComparison(document.querySelector('.comparison-btn[onclick*="equal"]'),'equal');else if(e.key==='Enter'&&state.selectedComparison)submitComparison()}});
+function formatTime(s) {
+    const m=Math.floor(s/60);
+    return`${m.toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`;
+}
 
-function showLevelSelect(){$("start").style.display="none";$("levelSelect").style.display="block"}
-function backToStart(){stopTimer();["start","levelSelect","game","gameover","clear","hiddenClear"].forEach(id=>$(id).style.display="none");$("start").style.display="block";$("timerDisplay").style.display="none"}
-function restart(){backToStart()}
+// タイマー関数
+function startTimer() {
+    if(state.mode==='summary'||state.mode==='hidden'){
+        state.startTime=Date.now();
+        $("timerDisplay").style.display="block";
+        state.timerInterval=setInterval(updateTimer,1000);
+    }
+}
 
-function selectLevel(lv){state={score:0,level:lv,prob:null,unit:"",mode:"select",lvCount:0,totalQ:0,qNum:0,completed:new Set(),selectedComparison:null,selectQCount:0,startTime:null,timerInterval:null,hiddenQ:0};$("levelSelect").style.display="none";$("game").style.display="block";updateDisplay();updateLevelIndicator();nextQ()}
+function updateTimer() {
+    if(state.startTime){
+        const elapsed=Math.floor((Date.now()-state.startTime)/1000);
+        $("timer").textContent=formatTime(elapsed);
+    }
+}
 
-function backToLevelSelect(){stopTimer();$("game").style.display="none";$("levelSelect").style.display="block";$("timerDisplay").style.display="none"}
+function stopTimer() {
+    if(state.timerInterval){
+        clearInterval(state.timerInterval);
+        state.timerInterval=null;
+    }
+}
 
-function selectMode(m){if(m==='hidden')state={score:0,level:10,prob:null,unit:"",mode:"hidden",lvCount:0,totalQ:0,qNum:0,completed:new Set(),selectedComparison:null,selectQCount:0,startTime:null,timerInterval:null,hiddenQ:0};else state={score:0,level:1,prob:null,unit:"",mode:m,lvCount:0,totalQ:0,qNum:0,completed:new Set(),selectedComparison:null,selectQCount:0,startTime:null,timerInterval:null,hiddenQ:0};$("start").style.display="none";$("game").style.display="block";updateDisplay();updateLevelIndicator();if(m==='summary'||m==='hidden')startTimer();nextQ()}
+function getElapsedTime() {
+    return state.startTime?Math.floor((Date.now()-state.startTime)/1000):0;
+}
 
-function updateDisplay(){if(state.mode==='hidden'){$("lv").textContent="隠し";$("lvInfo").textContent="超高難度ステージ";$("monster").textContent="👑"}else{$("lv").textContent=state.level;$("lvInfo").textContent=lvNames[state.level-1];$("monster").textContent=monsters[state.level-1]}$("score").textContent=state.score;$("levelSelectBtn").style.display=state.mode==='select'?"inline-block":"none";const bar=$("progressBar");if(state.mode==='practice'){$("modeDisplay").innerHTML='<div class="mode-info practice"><strong>📚 練習モード</strong></div>';$("levelProgress").textContent=`このレベル: ${state.lvCount}/5問正解`;bar.className="progress-bar practice";bar.style.width=`${(state.lvCount/5)*100}%`;$("totalQ").style.display="none";$("hiddenQ").style.display="none"}else if(state.mode==='select'){$("modeDisplay").innerHTML='<div class="mode-info select"><strong>🎮 選べるモード</strong></div>';$("levelProgress").textContent=`問題数: ${state.selectQCount}問`;bar.className="progress-bar select";bar.style.width=`${Math.min((state.selectQCount/10)*100,100)}%`;$("totalQ").style.display="none";$("hiddenQ").style.display="none"}else if(state.mode==='hidden'){$("modeDisplay").innerHTML='<div class="mode-info hidden"><strong>👑 隠しステージ</strong></div>';$("levelProgress").textContent=`問題 ${state.hiddenQ+1}/10`;bar.className="progress-bar hidden";bar.style.width=`${(state.hiddenQ/10)*100}%`;$("totalQ").style.display="none";$("hiddenQ").style.display="inline";$("hiddenQ").textContent=" / 10問中"}else{$("modeDisplay").innerHTML='<div class="mode-info summary"><strong>🎯 まとめモード</strong></div>';$("levelProgress").textContent=`問題 ${state.totalQ+1}/45`;bar.className="progress-bar summary";bar.style.width=`${(state.totalQ/45)*100}%`;$("totalQ").style.display="inline";$("totalQ").textContent=" / 45問中";$("hiddenQ").style.display="none"}}
+// ランキング機能
+function saveRanking(time) {
+    try {
+        let rankings=JSON.parse(localStorage.getItem('fractionQuestRankings')||'[]');
+        rankings.push({time,date:new Date().toISOString()});
+        rankings.sort((a,b)=>a.time-b.time);
+        rankings=rankings.slice(0,100);
+        localStorage.setItem('fractionQuestRankings',JSON.stringify(rankings));
+        return rankings;
+    } catch(e) {
+        return [];
+    }
+}
 
-function updateLevelIndicator(){const ind=$("levelIndicator");if(state.mode==='hidden'){ind.innerHTML="";return}ind.innerHTML="";for(let i=1;i<=9;i++){const dot=document.createElement("div");dot.className="level-dot";dot.textContent=i;if(state.completed.has(i))dot.classList.add("completed");else if(i===state.level)dot.classList.add("current");ind.appendChild(dot)}}
+function displayRanking(currentTime) {
+    const rankings=saveRanking(currentTime);
+    const currentRank=rankings.findIndex(r=>r.time===currentTime)+1;
+    $("rankingDisplay").style.display="block";
+    const rankingList=$("rankingList");
+    rankingList.innerHTML="";
+    const myRankDiv=document.createElement("div");
+    myRankDiv.className="ranking-item current";
+    myRankDiv.innerHTML=`<span><strong>あなたの順位: ${currentRank}位</strong></span><span><strong>${formatTime(currentTime)}</strong></span>`;
+    rankingList.appendChild(myRankDiv);
+    const medals=["🥇","🥈","🥉"];
+    for(let i=0;i<Math.min(3,rankings.length);i++){
+        const rankDiv=document.createElement("div");
+        rankDiv.className="ranking-item";
+        if(i===currentRank-1)rankDiv.classList.add("current");
+        rankDiv.innerHTML=`<span><span class="rank-medal">${medals[i]}</span>${i+1}位</span><span>${formatTime(rankings[i].time)}</span>`;
+        if(i<currentRank-1||currentRank>3)rankingList.appendChild(rankDiv);
+    }
+}
 
-function generateProblem(lv){if(state.mode==='hidden')return generateHiddenProblem();switch(lv){case 1:{const[n,d]=randFrac(9,12);const i=R(2,8);return{q:`${frac(n,d)} × ${i} =`,n:n*i,d:d,type:'fraction',mixed:false}}case 2:{const[n,d]=randFrac(8,10);const i=R(2,6);return{q:`${frac(n,d)} ÷ ${i} =`,n:n,d:d*i,type:'fraction',mixed:false}}case 3:{const[n1,d1]=randFrac(8,12);const[n2,d2]=randFrac(8,12);return{q:`${frac(n1,d1)} × ${frac(n2,d2)} =`,n:n1*n2,d:d1*d2,type:'fraction',mixed:false}}case 4:{const w1=R(1,3),d1=R(3,6),n1=R(1,d1-1);const w2=R(1,2),d2=R(3,5),n2=R(1,d2-1);const i1=w1*d1+n1,i2=w2*d2+n2;return{q:`${mixedFrac(w1,n1,d1)} × ${mixedFrac(w2,n2,d2)} =`,n:i1*i2,d:d1*d2,type:'fraction',mixed:true}}case 5:{const[n1,d1]=randFrac(6,8);const[n2,d2]=randFrac(6,8);const[n3,d3]=randFrac(6,8);return{q:`${frac(n1,d1)} × ${frac(n2,d2)} × ${frac(n3,d3)} =`,n:n1*n2*n3,d:d1*d2*d3,type:'fraction',mixed:false}}case 6:{const[n1,d1]=randFrac(8,12);const[n2,d2]=randFrac(8,12);const v1=n1/d1,v2=n2/d2;const mult=R(2,4);const patterns=[{e1:`${frac(n1,d1)} × ${frac(n2,d2)}`,e2:`${frac(n1,d1)}`,v1:v1*v2,v2:v1},{e1:`${frac(n1,d1)} × ${mult}`,e2:`${frac(n1,d1)}`,v1:v1*mult,v2:v1}];const p=patterns[R(0,1)];return{q:`${p.e1} と ${p.e2} どちらが大きいですか？<br><small>（1:左がわ 2:右がわ 3:同じ）</small>`,a:Math.abs(p.v1-p.v2)<0.0001?'equal':p.v1>p.v2?'left':'right',type:'comparison',mixed:false}}case 7:{const[n,d]=randFrac(8,12);return{q:`${frac(n,d)} の逆数を求めましょう`,n:d,d:n,type:'fraction',mixed:false}}case 8:{const patterns=[()=>{const m=R(10,50);return{q:`${m}分は何時間ですか？`,n:m,d:60,u:"時間",type:'fraction',mixed:false}},()=>{const s=R(15,120);return{q:`${s}秒は何分ですか？`,n:s,d:60,u:"分",type:'fraction',mixed:false}},()=>{const h=R(6,20);return{q:`${h}時間は何日ですか？`,n:h,d:24,u:"日",type:'fraction',mixed:false}}];return patterns[R(0,2)]()}case 9:{const patterns=[()=>{const t=R(12,24);const[n,d]=randFrac(4,8);return{q:`${t}個のお菓子の${frac(n,d)}は何個ですか？`,n:t*n,d:d,u:"個",type:'fraction',mixed:true}},()=>{const t=R(6,15);const div=R(2,5);return{q:`${t}個のりんごを${div}人で等しく分けると、1人あたり何個になりますか？`,n:t,d:div,u:"個",type:'fraction',mixed:true}},()=>{const[n,d]=randFrac(6,10);const w=R(8,20);return{q:`${w}mのリボンの${frac(n,d)}の長さは何mですか？`,n:w*n,d:d,u:"m",type:'fraction',mixed:false}}];return patterns[R(0,2)]()}default:return generateProblem(1)}}
+// アニメーション関数
+function createFireworks() {
+    const celebration=$("celebration");
+    celebration.innerHTML="";
+    for(let i=0;i<15;i++){
+        setTimeout(()=>{
+            const firework=document.createElement("div");
+            firework.className="firework";
+            firework.style.left=Math.random()*window.innerWidth+"px";
+            firework.style.top=Math.random()*window.innerHeight+"px";
+            firework.style.background=`radial-gradient(circle, hsl(${Math.random()*360}, 100%, 50%), hsl(${Math.random()*360}, 100%, 70%))`;
+            celebration.appendChild(firework);
+            setTimeout(()=>firework.remove(),2000);
+        },i*100);
+    }
+    for(let i=0;i<30;i++){
+        setTimeout(()=>{
+            const sparkle=document.createElement("div");
+            sparkle.className="sparkle";
+            sparkle.style.left=Math.random()*window.innerWidth+"px";
+            sparkle.style.top=Math.random()*window.innerHeight+"px";
+            celebration.appendChild(sparkle);
+            setTimeout(()=>sparkle.remove(),1500);
+        },i*50);
+    }
+}
 
-function nextQ(){if(state.mode==='hidden'){if(state.hiddenQ>=10){showHiddenClear();return}}else if(state.mode==='practice'){if(state.lvCount>=5){state.completed.add(state.level);if(state.level>=9){showClear();return}state.level++;state.lvCount=0;animate("level-up");updateLevelIndicator()}}else if(state.mode!=='select'){if(state.level>=9&&state.qNum>=5){showClear();return}if(state.qNum>=5){state.completed.add(state.level);state.level++;state.qNum=0;animate("level-up");updateLevelIndicator()}}state.prob=generateProblem(state.level);state.selectedComparison=null;$("q").innerHTML=state.prob.q;state.unit=state.prob.u||"";clearInputs();$("wrong").style.display="none";if(state.prob.type==='comparison'){$("answerSections").style.display="none";$("comparisonInput").style.display="block";document.querySelectorAll('.comparison-btn').forEach(btn=>btn.classList.remove('selected'))}else{$("answerSections").style.display="flex";$("comparisonInput").style.display="none"}$("mixedSection").style.display=state.prob.mixed?"block":"none";const show=state.unit?"block":"none";["fUnit","mUnit","nUnit"].forEach(id=>{$(id).textContent=state.unit;$(id).style.display=show});updateDisplay();setFocus()}
+function createMasterFireworks() {
+    const celebration=$("celebration");
+    celebration.innerHTML="";
+    for(let i=0;i<50;i++){
+        setTimeout(()=>{
+            const firework=document.createElement("div");
+            firework.className="firework";
+            firework.style.left=Math.random()*window.innerWidth+"px";
+            firework.style.top=Math.random()*window.innerHeight+"px";
+            firework.style.background=`radial-gradient(circle, hsl(${Math.random()*360}, 100%, 50%), hsl(${(Math.random()*360+180)%360}, 100%, 70%))`;
+            firework.style.animation=`firework ${2+Math.random()}s ease-out forwards`;
+            celebration.appendChild(firework);
+            setTimeout(()=>firework.remove(),3000);
+        },i*50);
+    }
+    for(let i=0;i<100;i++){
+        setTimeout(()=>{
+            const star=document.createElement("div");
+            star.innerHTML="⭐";
+            star.style.position="absolute";
+            star.style.left=Math.random()*window.innerWidth+"px";
+            star.style.top=Math.random()*window.innerHeight+"px";
+            star.style.fontSize=(10+Math.random()*20)+"px";
+            star.style.animation=`sparkle ${1+Math.random()}s ease-out infinite`;
+            star.style.pointerEvents="none";
+            celebration.appendChild(star);
+            setTimeout(()=>star.remove(),3000);
+        },i*30);
+    }
+}
 
-function clearInputs(){["n","d","mw","mn","md","norm"].forEach(id=>$(id).value="")}
+// 称号システム
+function unlockTitle(titleKey) {
+    if(titles[titleKey]){
+        titles[titleKey].unlocked=true;
+        try {
+            localStorage.setItem(`title_${titleKey}`,'true');
+        } catch(e) {}
+        showTitleUnlock(titles[titleKey]);
+    }
+}
 
-function animate(cls){$("monster").classList.add(cls);if(cls==="correct")createFireworks();setTimeout(()=>$("monster").classList.remove(cls),cls==="level-up"?3000:1500)}
+function showTitleUnlock(title) {
+    const titleDiv=document.createElement('div');
+    titleDiv.innerHTML=`<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:2000;display:flex;align-items:center;justify-content:center"><div style="background:linear-gradient(45deg,#ffd700,#ffed4e);padding:40px;border-radius:20px;text-align:center;border:5px solid #ff6b6b;animation:titleGlow 2s infinite"><h1 style="color:#d32f2f;font-size:36px;margin:0;text-shadow:2px 2px 4px rgba(0,0,0,0.5)">🏆 称号獲得！ 🏆</h1><div style="font-size:48px;margin:20px 0">👑</div><h2 style="color:#1976d2;font-size:28px;margin:10px 0">${title.name}</h2><p style="color:#333;font-size:16px;margin:0">${title.description}</p><button onclick="this.parentElement.parentElement.remove()" style="margin-top:20px;padding:12px 24px;font-size:18px;background:#4CAF50;color:white;border:none;border-radius:8px;cursor:pointer">確認</button></div></div>`;
+    document.body.appendChild(titleDiv);
+}
 
-function selectComparison(btn,choice){document.querySelectorAll('.comparison-btn').forEach(b=>b.classList.remove('selected'));btn.classList.add('selected');state.selectedComparison=choice}
+// 問題生成
+function generateHiddenProblem() {
+    const patterns=[
+        ()=>{
+            const[n1,d1]=randFrac(12,15);
+            const[n2,d2]=randFrac(12,15);
+            const[n3,d3]=randFrac(8,12);
+            return{q:`${frac(n1,d1)} × ${frac(n2,d2)} ÷ ${frac(n3,d3)} =`,n:n1*n2*d3,d:d1*d2*n3,type:'fraction',mixed:true};
+        },
+        ()=>{
+            const w1=R(2,5),d1=R(4,8),n1=R(1,d1-1);
+            const w2=R(1,4),d2=R(3,7),n2=R(1,d2-1);
+            const w3=R(1,3),d3=R(2,6),n3=R(1,d3-1);
+            const i1=w1*d1+n1,i2=w2*d2+n2,i3=w3*d3+n3;
+            return{q:`${mixedFrac(w1,n1,d1)} × ${mixedFrac(w2,n2,d2)} ÷ ${mixedFrac(w3,n3,d3)} =`,n:i1*i2*d3,d:d1*d2*i3,type:'fraction',mixed:true};
+        },
+        ()=>{
+            const total=R(24,48);
+            const[n1,d1]=randFrac(6,12);
+            const[n2,d2]=randFrac(4,8);
+            return{q:`${total}個のお菓子があります。最初に全体の${frac(n1,d1)}を食べ、残りの${frac(n2,d2)}をさらに食べました。最後に残ったお菓子は何個ですか？`,n:total*(d1*d2-n1*d2-(d1-n1)*n2),d:d1*d2,u:"個",type:'fraction',mixed:true};
+        }
+    ];
+    return patterns[R(0,2)]();
+}
 
-function submitFraction(){const num=parseInt($("n").value)||0;const den=parseInt($("d").value)||1;if(den===0){showError("分母は0にできません");return}if(num===0&&den===1){showError("分子を入力してください");return}checkAnswer(num,den)}
+function generateProblem(lv) {
+    if(state.mode==='hidden')return generateHiddenProblem();
+    switch(lv){
+        case 1:{const[n,d]=randFrac(9,12);const i=R(2,8);return{q:`${frac(n,d)} × ${i} =`,n:n*i,d:d,type:'fraction',mixed:false}}
+        case 2:{const[n,d]=randFrac(8,10);const i=R(2,6);return{q:`${frac(n,d)} ÷ ${i} =`,n:n,d:d*i,type:'fraction',mixed:false}}
+        case 3:{const[n1,d1]=randFrac(8,12);const[n2,d2]=randFrac(8,12);return{q:`${frac(n1,d1)} × ${frac(n2,d2)} =`,n:n1*n2,d:d1*d2,type:'fraction',mixed:false}}
+        case 4:{const w1=R(1,3),d1=R(3,6),n1=R(1,d1-1);const w2=R(1,2),d2=R(3,5),n2=R(1,d2-1);const i1=w1*d1+n1,i2=w2*d2+n2;return{q:`${mixedFrac(w1,n1,d1)} × ${mixedFrac(w2,n2,d2)} =`,n:i1*i2,d:d1*d2,type:'fraction',mixed:true}}
+        case 5:{const[n1,d1]=randFrac(6,8);const[n2,d2]=randFrac(6,8);const[n3,d3]=randFrac(6,8);return{q:`${frac(n1,d1)} × ${frac(n2,d2)} × ${frac(n3,d3)} =`,n:n1*n2*n3,d:d1*d2*d3,type:'fraction',mixed:false}}
+        case 6:{const[n1,d1]=randFrac(8,12);const[n2,d2]=randFrac(8,12);const v1=n1/d1,v2=n2/d2;const mult=R(2,4);const patterns=[{e1:`${frac(n1,d1)} × ${frac(n2,d2)}`,e2:`${frac(n1,d1)}`,v1:v1*v2,v2:v1},{e1:`${frac(n1,d1)} × ${mult}`,e2:`${frac(n1,d1)}`,v1:v1*mult,v2:v1}];const p=patterns[R(0,1)];return{q:`${p.e1} と ${p.e2} どちらが大きいですか？<br><small>（1:左がわ 2:右がわ 3:同じ）</small>`,a:Math.abs(p.v1-p.v2)<0.0001?'equal':p.v1>p.v2?'left':'right',type:'comparison',mixed:false}}
+        case 7:{const[n,d]=randFrac(8,12);return{q:`${frac(n,d)} の逆数を求めましょう`,n:d,d:n,type:'fraction',mixed:false}}
+        case 8:{const patterns=[()=>{const m=R(10,50);return{q:`${m}分は何時間ですか？`,n:m,d:60,u:"時間",type:'fraction',mixed:false}},()=>{const s=R(15,120);return{q:`${s}秒は何分ですか？`,n:s,d:60,u:"分",type:'fraction',mixed:false}},()=>{const h=R(6,20);return{q:`${h}時間は何日ですか？`,n:h,d:24,u:"日",type:'fraction',mixed:false}}];return patterns[R(0,2)]()}
+        case 9:{const patterns=[()=>{const t=R(12,24);const[n,d]=randFrac(4,8);return{q:`${t}個のお菓子の${frac(n,d)}は何個ですか？`,n:t*n,d:d,u:"個",type:'fraction',mixed:true}},()=>{const t=R(6,15);const div=R(2,5);return{q:`${t}個のりんごを${div}人で等しく分けると、1人あたり何個になりますか？`,n:t,d:div,u:"個",type:'fraction',mixed:true}},()=>{const[n,d]=randFrac(6,10);const w=R(8,20);return{q:`${w}mのリボンの${frac(n,d)}の長さは何mですか？`,n:w*n,d:d,u:"m",type:'fraction',mixed:false}}];return patterns[R(0,2)]()}
+        default:return generateProblem(1);
+    }
+}
 
-function submitMixed(){const w=parseInt($("mw").value)||0;const num=parseInt($("mn").value)||0;const den=parseInt($("md").value)||1;if(num===0&&w===0){showError("答えを入力してください");return}if(den===0){showError("分母は0にできません");return}if(num>=den&&den>0&&num>0){showError("帯分数の分子は分母より小さくしてください");return}checkAnswer(w*den+num,den)}
+// UI制御関数
+function showLevelSelect() {
+    $("start").style.display="none";
+    $("levelSelect").style.display="block";
+}
 
-function submitNormal(){const ans=$("norm").value.trim();if(!ans){showError("答えを入力してください");return}const userDec=parseFloat(ans);const correctDec=state.prob.n/state.prob.d;const isCorrect=!isNaN(userDec)&&Math.abs(userDec-correctDec)<0.0001;handleAnswer(isCorrect,formatAnswer(state.prob.n,state.prob.d,state.unit))}
+function backToStart() {
+    stopTimer();
+    ["start","levelSelect","game","gameover","clear","hiddenClear"].forEach(id=>$(id).style.display="none");
+    $("start").style.display="block";
+    $("timerDisplay").style.display="none";
+}
 
-function submitComparison(){if(!state.selectedComparison){showError("選択肢を選んでください");return}handleAnswer(state.selectedComparison===state.prob.a,"比較問題")}
+function restart() {
+    backToStart();
+}
 
-function checkAnswer(un,ud){const[cn,cd]=simplify(state.prob.n,state.prob.d);const[sn,sd]=simplify(un,ud);const userGcd=gcd(Math.abs(un),Math.abs(ud));const needsSimplification=userGcd>1;const isCorrect=sn===cn&&sd===cd&&!needsSimplification;const correctAns=formatAnswer(cn,cd,state.unit);if(needsSimplification){const[rn,rd]=simplify(un,ud);$("almostMsg").style.display="block";$("almostText").textContent=`${un}/${ud} = ${rn}/${rd}`;handleAnswer(false,correctAns);return}handleAnswer(isCorrect,correctAns)}
+function selectLevel(lv) {
+    state={score:0,level:lv,prob:null,unit:"",mode:"select",lvCount:0,totalQ:0,qNum:0,completed:new Set(),selectedComparison:null,selectQCount:0,startTime:null,timerInterval:null,hiddenQ:0};
+    $("levelSelect").style.display="none";
+    $("game").style.display="block";
+    updateDisplay();
+    updateLevelIndicator();
+    nextQ();
+}
 
-function handleAnswer(isCorrect,correctAns){if(isCorrect){state.score++;if(state.mode==='practice')state.lvCount++;else if(state.mode==='select')state.selectQCount++;else if(state.mode==='hidden')state.hiddenQ++;else{state.qNum++;state.totalQ++}animate("correct");setTimeout(nextQ,2000)}else{$("wrong").style.display="block";if(state.prob.type!=='comparison'){$("correctAnswer").style.display="block";$("correctText").textContent=correctAns}if(state.mode==='practice'){state.lvCount=0;$("practiceMsg").style.display="block"}else if(state.mode==='select'){$("selectMsg").style.display="block";$("backToSelectBtn").style.display="inline-block"}else{showGameOver();return}animate("wrong")}}
+function backToLevelSelect() {
+    stopTimer();
+    $("game").style.display="none";
+    $("levelSelect").style.display="block";
+    $("timerDisplay").style.display="none";
+}
 
-function showError(msg){$("wrongMsg").textContent=msg;$("wrong").style.display="block";$("correctAnswer").style.display="none";$("practiceMsg").style.display="none";$("selectMsg").style.display="none";$("almostMsg").style.display="none";$("backToSelectBtn").style.display="none"}
+function selectMode(m) {
+    if(m==='hidden')state={score:0,level:10,prob:null,unit:"",mode:"hidden",lvCount:0,totalQ:0,qNum:0,completed:new Set(),selectedComparison:null,selectQCount:0,startTime:null,timerInterval:null,hiddenQ:0};
+    else state={score:0,level:1,prob:null,unit:"",mode:m,lvCount:0,totalQ:0,qNum:0,completed:new Set(),selectedComparison:null,selectQCount:0,startTime:null,timerInterval:null,hiddenQ:0};
+    $("start").style.display="none";
+    $("game").style.display="block";
+    updateDisplay();
+    updateLevelIndicator();
+    if(m==='summary'||m==='hidden')startTimer();
+    nextQ();
+}
 
-function retry(){$("wrong").style.display="none";$("almostMsg").style.display="none";clearInputs();if(state.prob?.type==='comparison'){state.selectedComparison=null;document.querySelectorAll('.comparison-btn').forEach(btn=>btn.classList.remove('selected'))}setFocus()}
+function updateDisplay() {
+    if(state.mode==='hidden'){
+        $("lv").textContent="隠し";
+        $("lvInfo").textContent="超高難度ステージ";
+        $("monster").textContent="👑";
+    } else {
+        $("lv").textContent=state.level;
+        $("lvInfo").textContent=lvNames[state.level-1];
+        $("monster").textContent=monsters[state.level-1];
+    }
+    $("score").textContent=state.score;
+    $("levelSelectBtn").style.display=state.mode==='select'?"inline-block":"none";
+    const bar=$("progressBar");
+    if(state.mode==='practice'){
+        $("modeDisplay").innerHTML='<div class="mode-info practice"><strong>📚 練習モード</strong></div>';
+        $("levelProgress").textContent=`このレベル: ${state.lvCount}/5問正解`;
+        bar.className="progress-bar practice";
+        bar.style.width=`${(state.lvCount/5)*100}%`;
+        $("totalQ").style.display="none";
+        $("hiddenQ").style.display="none";
+    }else if(state.mode==='select'){
+        $("modeDisplay").innerHTML='<div class="mode-info select"><strong>🎮 選べるモード</strong></div>';
+        $("levelProgress").textContent=`問題数: ${state.selectQCount}問`;
+        bar.className="progress-bar select";
+        bar.style.width=`${Math.min((state.selectQCount/10)*100,100)}%`;
+        $("totalQ").style.display="none";
+        $("hiddenQ").style.display="none";
+    }else if(state.mode==='hidden'){
+        $("modeDisplay").innerHTML='<div class="mode-info hidden"><strong>👑 隠しステージ</strong></div>';
+        $("levelProgress").textContent=`問題 ${state.hiddenQ+1}/10`;
+        bar.className="progress-bar hidden";
+        bar.style.width=`${(state.hiddenQ/10)*100}%`;
+        $("totalQ").style.display="none";
+        $("hiddenQ").style.display="inline";
+        $("hiddenQ").textContent=" / 10問中";
+    }else{
+        $("modeDisplay").innerHTML='<div class="mode-info summary"><strong>🎯 まとめモード</strong></div>';
+        $("levelProgress").textContent=`問題 ${state.totalQ+1}/45`;
+        bar.className="progress-bar summary";
+        bar.style.width=`${(state.totalQ/45)*100}%`;
+        $("totalQ").style.display="inline";
+        $("totalQ").textContent=" / 45問中";
+        $("hiddenQ").style.display="none";
+    }
+}
 
-function next(){nextQ()}
+function updateLevelIndicator() {
+    const ind=$("levelIndicator");
+    if(state.mode==='hidden'){ind.innerHTML="";return}
+    ind.innerHTML="";
+    for(let i=1;i<=9;i++){
+        const dot=document.createElement("div");
+        dot.className="level-dot";
+        dot.textContent=i;
+        if(state.completed.has(i))dot.classList.add("completed");
+        else if(i===state.level)dot.classList.add("current");
+        ind.appendChild(dot);
+    }
+}
 
-function showGameOver(){stopTimer();$("game").style.display="none";$("gameover").style.display="block";$("finalLv").textContent=state.mode==='hidden'?"隠し":state.level;$("finalScore1").textContent=state.score;if(state.mode==='summary'||state.mode==='hidden'){const elapsedTime=getElapsedTime();$("finalTime").style.display="block";$("finalTimeValue").textContent=formatTime(elapsedTime)}}
+function nextQ() {
+    if(state.mode==='hidden'){
+        if(state.hiddenQ>=10){showHiddenClear();return}
+    }else if(state.mode==='practice'){
+        if(state.lvCount>=5){
+            state.completed.add(state.level);
+            if(state.level>=9){showClear();return}
+            state.level++;state.lvCount=0;
+            animate("level-up");updateLevelIndicator();
+        }
+    }else if(state.mode!=='select'){
+        if(state.level>=9&&state.qNum>=5){showClear();return}
+        if(state.qNum>=5){
+            state.completed.add(state.level);
+            state.level++;state.qNum=0;
+            animate("level-up");updateLevelIndicator();
+        }
+    }
+    state.prob=generateProblem(state.level);
+    state.selectedComparison=null;
+    $("q").innerHTML=state.prob.q;
+    state.unit=state.prob.u||"";
+    clearInputs();
+    $("wrong").style.display="none";
+    if(state.prob.type==='comparison'){
+        $("answerSections").style.display="none";
+        $("comparisonInput").style.display="block";
+        document.querySelectorAll('.comparison-btn').forEach(btn=>btn.classList.remove('selected'));
+    }else{
+        $("answerSections").style.display="flex";
+        $("comparisonInput").style.display="none";
+    }
+    $("mixedSection").style.display=state.prob.mixed?"block":"none";
+    const show=state.unit?"block":"none";
+    ["fUnit","mUnit","nUnit"].forEach(id=>{$(id).textContent=state.unit;$(id).style.display=show});
+    updateDisplay();
+    setFocus();
+}
 
-function showClear(){stopTimer();createFireworks();$("game").style.display="none";$("clear").style.display="block";$("finalScore2").textContent=state.score;if(state.mode==='summary'){hiddenStageUnlocked=true;try{localStorage.setItem('hiddenStageUnlocked','true')}catch(e){}$("hiddenStageBtn").style.display="inline-block";$("hiddenModeInfo").style.display="block";$("hiddenStageUnlock").style.display="block";const elapsedTime=getElapsedTime();$("clearTimeValue").textContent=formatTime(elapsedTime);displayRanking(elapsedTime)}}
+function clearInputs() {
+    ["n","d","mw","mn","md","norm"].forEach(id=>$(id).value="");
+}
 
-function showHiddenClear(){stopTimer();createMasterFireworks();unlockTitle('fractionMaster');$("game").style.display="none";$("hiddenClear").style.display="block";$("hiddenFinalScore").textContent=state.score}
+function animate(cls) {
+    $("monster").classList.add(cls);
+    if(cls==="correct")createFireworks();
+    setTimeout(()=>$("monster").classList.remove(cls),cls==="level-up"?3000:1500);
+}
+
+function setFocus() {
+    setTimeout(()=>{
+        if(state.prob?.type!=='comparison'){
+            const input=$("mixedSection").style.display==="block"?$("md"):$("d");
+            input.focus();
+        }
+    },150);
+}
+
+// 入力処理
+function selectComparison(btn,choice) {
+    document.querySelectorAll('.comparison-btn').forEach(b=>b.classList.remove('selected'));
+    btn.classList.add('selected');
+    state.selectedComparison=choice;
+}
+
+function submitFraction() {
+    const num=parseInt($("n").value)||0;
+    const den=parseInt($("d").value)||1;
+    if(den===0){showError("分母は0にできません");return}
+    if(num===0&&den===1){showError("分子を入力してください");return}
+    checkAnswer(num,den);
+}
+
+function submitMixed() {
+    const w=parseInt($("mw").value)||0;
+    const num=parseInt($("mn").value)||0;
+    const den=parseInt($("md").value)||1;
+    if(num===0&&w===0){showError("答えを入力してください");return}
+    if(den===0){showError("分母は0にできません");return}
+    if(num>=den&&den>0&&num>0){showError("帯分数の分子は分母より小さくしてください");return}
+    checkAnswer(w*den+num,den);
+}
+
+function submitNormal() {
+    const ans=$("norm").value.trim();
+    if(!ans){showError("答えを入力してください");return}
+    const userDec=parseFloat(ans);
+    const correctDec=state.prob.n/state.prob.d;
+    const isCorrect=!isNaN(userDec)&&Math.abs(userDec-correctDec)<0.0001;
+    handleAnswer(isCorrect,formatAnswer(state.prob.n,state.prob.d,state.unit));
+}
+
+function submitComparison() {
+    if(!state.selectedComparison){showError("選択肢を選んでください");return}
+    handleAnswer(state.selectedComparison===state.prob.a,"比較問題");
+}
+
+function checkAnswer(un,ud) {
+    const[cn,cd]=simplify(state.prob.n,state.prob.d);
+    const[sn,sd]=simplify(un,ud);
+    const userGcd=gcd(Math.abs(un),Math.abs(ud));
+    const needsSimplification=userGcd>1;
+    const isCorrect=sn===cn&&sd===cd&&!needsSimplification;
+    const correctAns=formatAnswer(cn,cd,state.unit);
+    if(needsSimplification){
+        const[rn,rd]=simplify(un,ud);
+        $("almostMsg").style.display="block";
+        $("almostText").textContent=`${un}/${ud} = ${rn}/${rd}`;
+        handleAnswer(false,correctAns);return;
+    }
+    handleAnswer(isCorrect,correctAns);
+}
+
+function handleAnswer(isCorrect,correctAns) {
+    if(isCorrect){
+        state.score++;
+        if(state.mode==='practice')state.lvCount++;
+        else if(state.mode==='select')state.selectQCount++;
+        else if(state.mode==='hidden')state.hiddenQ++;
+        else{state.qNum++;state.totalQ++}
+        animate("correct");
+        setTimeout(nextQ,2000);
+    }else{
+        $("wrong").style.display="block";
+        if(state.prob.type!=='comparison'){
+            $("correctAnswer").style.display="block";
+            $("correctText").textContent=correctAns;
+        }
+        if(state.mode==='practice'){
+            state.lvCount=0;
+            $("practiceMsg").style.display="block";
+        }else if(state.mode==='select'){
+            $("selectMsg").style.display="block";
+            $("backToSelectBtn").style.display="inline-block";
+        }else{
+            showGameOver();return;
+        }
+        animate("wrong");
+    }
+}
+
+function showError(msg) {
+    $("wrongMsg").textContent=msg;
+    $("wrong").style.display="block";
+    $("correctAnswer").style.display="none";
+    $("practiceMsg").style.display="none";
+    $("selectMsg").style.display="none";
+    $("almostMsg").style.display="none";
+    $("backToSelectBtn").style.display="none";
+}
+
+function retry() {
+    $("wrong").style.display="none";
+    $("almostMsg").style.display="none";
+    clearInputs();
+    if(state.prob?.type==='comparison'){
+        state.selectedComparison=null;
+        document.querySelectorAll('.comparison-btn').forEach(btn=>btn.classList.remove('selected'));
+    }
+    setFocus();
+}
+
+function next() {
+    nextQ();
+}
+
+// ゲーム終了処理
+function showGameOver() {
+    stopTimer();
+    $("game").style.display="none";
+    $("gameover").style.display="block";
+    $("finalLv").textContent=state.mode==='hidden'?"隠し":state.level;
+    $("finalScore1").textContent=state.score;
+    if(state.mode==='summary'||state.mode==='hidden'){
+        const elapsedTime=getElapsedTime();
+        $("finalTime").style.display="block";
+        $("finalTimeValue").textContent=formatTime(elapsedTime);
+    }
+}
+
+function showClear() {
+    stopTimer();
+    createFireworks();
+    $("game").style.display="none";
+    $("clear").style.display="block";
+    $("finalScore2").textContent=state.score;
+    if(state.mode==='summary'){
+        hiddenStageUnlocked=true;
+        try{localStorage.setItem('hiddenStageUnlocked','true')}catch(e){}
+        $("hiddenStageBtn").style.display="inline-block";
+        $("hiddenModeInfo").style.display="block";
+        $("hiddenStageUnlock").style.display="block";
+        const elapsedTime=getElapsedTime();
+        $("clearTimeValue").textContent=formatTime(elapsedTime);
+        displayRanking(elapsedTime);
+    }
+}
+
+function showHiddenClear() {
+    stopTimer();
+    createMasterFireworks();
+    unlockTitle('fractionMaster');
+    $("game").style.display="none";
+    $("hiddenClear").style.display="block";
+    $("hiddenFinalScore").textContent=state.score;
+}
+
+// キーボードイベント
+document.addEventListener('keydown',e=>{
+    if(e.key==='Enter'&&e.target.tagName==='INPUT'){
+        e.preventDefault();
+        if(e.target.id==='n'||e.target.id==='d')submitFraction();
+        else if(['mw','mn','md'].includes(e.target.id))submitMixed();
+        else if(e.target.id==='norm')submitNormal();
+    }
+    if(state.prob?.type==='comparison'){
+        if(e.key==='1'){
+            const btn=document.querySelector('.comparison-btn[onclick*="left"]');
+            if(btn)selectComparison(btn,'left');
+        }else if(e.key==='2'){
+            const btn=document.querySelector('.comparison-btn[onclick*="right"]');
+            if(btn)selectComparison(btn,'right');
+        }else if(e.key==='3'){
+            const btn=document.querySelector('.comparison-btn[onclick*="equal"]');
+            if(btn)selectComparison(btn,'equal');
+        }else if(e.key==='Enter'&&state.selectedComparison){
+            submitComparison();
+        }
+    }
+});
 </script>
 </body>
 </html>
