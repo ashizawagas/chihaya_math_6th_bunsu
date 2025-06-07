@@ -1,3 +1,808 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>千早算数クエスト - 6年生分数の割り算版</title>
+
+<!-- Firebase SDK -->
+<script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import { getFirestore, collection, doc, setDoc, getDocs, query, orderBy, limit, serverTimestamp, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+    // Firebase設定
+    const firebaseConfig = {
+        apiKey: "AIzaSyBxis_hmhvm9CR8xea8trCsMWltL-B343I",
+        authDomain: "chihayamath6th0601.firebaseapp.com",
+        projectId: "chihayamath6th0601",
+        storageBucket: "chihayamath6th0601.firebasestorage.app",
+        messagingSenderId: "537279903794",
+        appId: "1:537279903794:web:830a1f9ab8a4078ef7642b",
+        measurementId: "G-ZQJ6W66F3J"
+    };
+
+    // Firebaseの初期化
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    
+    // グローバル変数として設定
+    window.db = db;
+    window.firestore = { collection, doc, setDoc, getDocs, query, orderBy, limit, serverTimestamp, getDoc };
+    
+    console.log('Firebase初期化完了');
+</script>
+
+<style>
+body{font-family:Arial;text-align:center;background:#f0f8ff;margin:0;padding:20px}
+.monster{font-size:80px;transition:transform .3s;margin:20px 0}
+.monster.level-up{animation:levelUp 3s}
+.monster.correct{animation:correct 1.5s}
+.monster.wrong{animation:wrong 1s}
+@keyframes levelUp{0%{transform:scale(1) rotate(0deg);color:#333}20%{transform:scale(1.5) rotate(90deg);color:#ff0;filter:drop-shadow(0 0 20px #ff0)}40%{transform:scale(2) rotate(180deg);color:#f0f;filter:drop-shadow(0 0 30px #f0f)}60%{transform:scale(2.5) rotate(270deg);color:#0ff;filter:drop-shadow(0 0 40px #0ff)}80%{transform:scale(3) rotate(360deg);color:#0f0;filter:drop-shadow(0 0 50px #0f0)}100%{transform:scale(1) rotate(360deg);color:gold;filter:drop-shadow(0 0 20px gold)}}
+@keyframes correct{0%{transform:scale(1);color:#333}25%{transform:scale(1.3) rotate(10deg);color:#0f0;filter:drop-shadow(0 0 15px #0f0)}50%{transform:scale(1.5) rotate(-10deg);color:#00ff00;filter:drop-shadow(0 0 25px #00ff00)}75%{transform:scale(1.3) rotate(5deg);color:#32cd32;filter:drop-shadow(0 0 20px #32cd32)}100%{transform:scale(1);color:gold;filter:drop-shadow(0 0 10px gold)}}
+@keyframes wrong{0%{transform:scale(1)}25%{transform:scale(1.2)rotate(-10deg);color:#f00}50%{transform:scale(1.2)rotate(10deg);color:#f00}75%{transform:scale(1.2)rotate(-10deg);color:#f00}100%{transform:scale(1);color:#333}}
+.question{font-size:24px;margin:20px;padding:20px;background:white;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.1)}
+button{margin:10px;padding:12px 24px;font-size:16px;border:none;border-radius:8px;background:#4CAF50;color:white;cursor:pointer}
+button:hover{background:#45a049}
+.mode-btn{background:#2196f3;padding:15px 30px;font-size:18px;margin:20px}
+.mode-btn:hover{background:#1976d2}
+.mode-btn.practice{background:#ff9800}
+.mode-btn.practice:hover{background:#f57c00}
+.mode-btn.select{background:#9c27b0}
+.mode-btn.select:hover{background:#7b1fa2}
+.mode-btn.hidden{background:#ff6b6b;animation:hiddenPulse 2s infinite}
+.mode-btn.hidden:hover{background:#d32f2f}
+@keyframes hiddenPulse{0%,100%{transform:scale(1);box-shadow:0 0 10px #ff6b6b}50%{transform:scale(1.05);box-shadow:0 0 20px #ff6b6b}}
+input{font-size:18px;padding:10px;border:2px solid #ddd;border-radius:5px;margin:10px}
+input:focus{border-color:#2196f3;outline:none;box-shadow:0 0 5px rgba(33,150,243,.3)}
+select{font-size:18px;padding:10px;border:2px solid #ddd;border-radius:5px;margin:10px}
+select:focus{border-color:#2196f3;outline:none;box-shadow:0 0 5px rgba(33,150,243,.3)}
+.status{margin:15px 0;font-size:18px}
+.progress{background:#e0e0e0;border-radius:10px;margin:15px 0;height:20px;overflow:hidden}
+.progress-bar{height:100%;transition:width .3s}
+.progress-bar.practice{background:#ff9800}
+.progress-bar.summary{background:#f44336}
+.progress-bar.select{background:#9c27b0}
+.progress-bar.hidden{background:linear-gradient(45deg,#ff6b6b,#ffd700,#4caf50,#2196f3);background-size:400% 400%;animation:hiddenProgress 3s ease infinite}
+@keyframes hiddenProgress{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+.info{padding:15px;background:white;border-radius:10px;margin:15px 0}
+.mode-info{padding:10px;margin:10px 0;border-radius:8px;font-size:16px}
+.mode-info.practice{background:#fff3e0;color:#f57c00;border:2px solid #ff9800}
+.mode-info.summary{background:#ffebee;color:#d32f2f;border:2px solid #f44336}
+.mode-info.select{background:#f3e5f5;color:#7b1fa2;border:2px solid #9c27b0}
+.mode-info.hidden{background:linear-gradient(45deg,#ffebee,#fff3e0,#e8f5e8,#e3f2fd);color:#d32f2f;border:2px solid #ff6b6b;animation:hiddenGlow 2s infinite}
+@keyframes hiddenGlow{0%,100%{box-shadow:0 0 10px rgba(255,107,107,0.3)}50%{box-shadow:0 0 20px rgba(255,107,107,0.6)}}
+.clear-screen{background:linear-gradient(45deg,#ff9a9e,#fecfef);animation:rainbow 3s infinite;padding:40px;border-radius:20px;margin:20px}
+@keyframes rainbow{0%{background:linear-gradient(45deg,#ff9a9e,#fecfef);transform:scale(1)}25%{background:linear-gradient(45deg,#a8e6cf,#dcedc1);transform:scale(1.05)}50%{background:linear-gradient(45deg,#ffd93d,#ff6b6b);transform:scale(1.1)}75%{background:linear-gradient(45deg,#74b9ff,#0984e3);transform:scale(1.05)}100%{background:linear-gradient(45deg,#ff9a9e,#fecfef);transform:scale(1)}}
+.gameover{background:#ffebee;color:#d32f2f;padding:20px;border-radius:10px;margin:20px 0}
+.answer-sections{display:flex;justify-content:center;gap:20px;margin:20px 0;flex-wrap:wrap}
+.answer-section{background:white;border:2px solid #2196f3;border-radius:15px;padding:15px;min-width:180px}
+.answer-section h3{margin:0 0 10px 0;color:#2196f3;font-size:16px}
+.fraction-input{display:flex;flex-direction:column;align-items:center;gap:5px;margin:10px 0}
+.fraction-input input{width:70px;text-align:center;margin:2px}
+.fraction-line{width:80px;height:2px;background:#333;margin:3px 0}
+.mixed-input{display:flex;align-items:center;justify-content:center;gap:8px;margin:10px 0}
+.mixed-input input{width:50px;text-align:center}
+.normal-input{display:flex;flex-direction:column;align-items:center;gap:10px}
+.normal-input input{width:100px;text-align:center}
+.unit-display{font-size:14px;font-weight:bold;color:#666;margin-top:5px}
+.submit-btn{padding:12px 20px;font-size:16px;background:#4CAF50;color:white;border:none;border-radius:8px;cursor:pointer}
+.submit-btn:hover{background:#45a049}
+.comparison-options{display:flex;justify-content:center;gap:15px;margin:20px 0}
+.comparison-btn{padding:12px 25px;font-size:16px;background:#e3f2fd;border:2px solid #2196f3;border-radius:8px;cursor:pointer}
+.comparison-btn:hover{background:#2196f3;color:white}
+.comparison-btn.selected{background:#2196f3;color:white}
+.fraction-display{display:inline-block;text-align:center;vertical-align:middle;margin:0 5px}
+.fraction-display .numerator{display:block;line-height:1.2}
+.fraction-display .denominator{display:block;line-height:1.2}
+.fraction-display .fraction-bar{display:block;border-top:2px solid #333;margin:2px 0;min-width:25px}
+.level-indicator{display:flex;justify-content:center;gap:8px;margin:15px 0;flex-wrap:wrap}
+.level-dot{width:25px;height:25px;border-radius:50%;background:#e0e0e0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold}
+.level-dot.completed{background:#4caf50;color:white}
+.level-dot.current{background:#2196f3;color:white;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+.correct-answer{background:#e8f5e8;color:#2e7d32;padding:10px;border-radius:8px;margin:10px 0;border:2px solid #4caf50}
+.error-msg{background:#ffebee;color:#d32f2f;padding:10px;border-radius:8px;margin:10px 0;border:2px solid #f44336}
+.almost-msg{background:#fff3e0;color:#f57c00;padding:10px;border-radius:8px;margin:10px 0;border:2px solid #ff9800}
+.level-select{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;max-width:600px;margin:20px auto}
+.level-btn{padding:15px;background:#e3f2fd;border:2px solid #2196f3;border-radius:10px;cursor:pointer;text-align:center;font-size:14px;transition:all 0.3s;position:relative}
+.level-btn:hover{background:#2196f3;color:white;transform:scale(1.05)}
+.level-btn h4{margin:5px 0;font-size:16px}
+.level-btn p{margin:5px 0;font-size:12px;opacity:0.8}
+.level-btn.cleared{background:linear-gradient(45deg,#ffd700,#ffed4e);border:3px solid #ff6b6b;animation:clearedGlow 2s infinite}
+.level-btn.cleared::after{content:'🏆✨';position:absolute;top:-10px;right:-10px;font-size:20px;animation:bounce 1s infinite}
+@keyframes clearedGlow{0%,100%{box-shadow:0 0 15px rgba(255,215,0,0.5)}50%{box-shadow:0 0 30px rgba(255,215,0,0.8)}}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+.correct-celebration{position:fixed;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:1000}
+.firework{position:absolute;width:4px;height:4px;background:radial-gradient(circle,#ff0,#f00);border-radius:50%;animation:firework 2s ease-out forwards}
+@keyframes firework{0%{transform:scale(1);opacity:1}100%{transform:scale(20);opacity:0}}
+.sparkle{position:absolute;width:2px;height:2px;background:#fff;border-radius:50%;animation:sparkle 1.5s ease-out infinite}
+@keyframes sparkle{0%,100%{opacity:0;transform:scale(0)}50%{opacity:1;transform:scale(1)}}
+.nav-buttons{display:flex;justify-content:center;gap:10px;margin:15px 0;flex-wrap:wrap}
+.nav-btn{background:#6c757d;color:white;padding:8px 16px;font-size:14px;border:none;border-radius:6px;cursor:pointer}
+.nav-btn:hover{background:#5a6268}
+.timer{font-size:20px;font-weight:bold;color:#d32f2f;margin:10px 0;padding:10px;background:white;border-radius:8px;border:2px solid #f44336}
+.ranking{background:white;border-radius:10px;padding:20px;margin:20px 0;border:2px solid #ffd700}
+.ranking h3{color:#d32f2f;margin-bottom:15px}
+.ranking-item{display:flex;justify-content:space-between;align-items:center;padding:8px 15px;margin:5px 0;border-radius:5px;background:#f8f9fa}
+.ranking-item.current{background:#e8f5e8;border:2px solid #4caf50;font-weight:bold}
+.ranking-item.top3{background:#fff3cd;border:2px solid #ffc107}
+.rank-medal{font-size:20px;margin-right:10px}
+@keyframes titleGlow{0%,100%{transform:scale(1);box-shadow:0 0 20px #ffd700}50%{transform:scale(1.05);box-shadow:0 0 40px #ffd700,0 0 60px #ff6b6b}}
+@keyframes masterCelebration{0%{transform:scale(1) rotate(0deg)}25%{transform:scale(1.5) rotate(90deg);filter:hue-rotate(90deg)}50%{transform:scale(2) rotate(180deg);filter:hue-rotate(180deg)}75%{transform:scale(1.5) rotate(270deg);filter:hue-rotate(270deg)}100%{transform:scale(1) rotate(360deg);filter:hue-rotate(360deg)}}
+.master-celebration{animation:masterCelebration 4s ease-in-out}
+.hidden-stage-unlock{background:linear-gradient(45deg,#ff6b6b,#ffd700);color:white;font-weight:bold;animation:hiddenUnlock 3s infinite}
+@keyframes hiddenUnlock{0%,100%{transform:scale(1);box-shadow:0 0 15px rgba(255,107,107,0.5)}50%{transform:scale(1.1);box-shadow:0 0 30px rgba(255,215,0,0.8)}}
+.points-display{background:linear-gradient(45deg,#ffd700,#ffed4e);color:#d32f2f;padding:15px;border-radius:10px;margin:15px 0;border:3px solid #ff6b6b;font-weight:bold;font-size:18px;animation:pointsGlow 2s infinite}
+@keyframes pointsGlow{0%,100%{box-shadow:0 0 15px rgba(255,215,0,0.5)}50%{box-shadow:0 0 30px rgba(255,215,0,0.8)}}
+.points-earned{background:#e8f5e8;color:#2e7d32;padding:10px;border-radius:8px;margin:10px 0;border:2px solid #4caf50;font-weight:bold;animation:pointsEarn 2s}
+@keyframes pointsEarn{0%{transform:scale(1)}50%{transform:scale(1.2)}100%{transform:scale(1)}}
+.session-points{background:#e3f2fd;color:#1976d2;padding:8px;border-radius:6px;margin:5px 0;border:1px solid #2196f3;font-size:14px}
+.player-id{background:#f3e5f5;color:#7b1fa2;padding:10px;border-radius:8px;margin:10px 0;border:2px solid #9c27b0;font-size:14px;font-weight:bold}
+.global-ranking{background:#fff3cd;border-radius:10px;padding:20px;margin:20px 0;border:2px solid #ffc107}
+.global-ranking h3{color:#f57c00;margin-bottom:15px}
+.global-ranking-item{display:flex;justify-content:space-between;align-items:center;padding:10px 15px;margin:5px 0;border-radius:5px;background:#fff8e1}
+.global-ranking-item.my-rank{background:#e8f5e8;border:2px solid #4caf50;font-weight:bold}
+.level-clear-screen{background:linear-gradient(45deg,#ff9a9e,#fecfef);animation:rainbow 3s infinite;padding:40px;border-radius:20px;margin:20px}
+.formula-section{background:white;border:2px solid #2196f3;border-radius:15px;padding:15px;min-width:300px}
+.formula-section h3{margin:0 0 10px 0;color:#2196f3;font-size:16px}
+.formula-input{display:flex;flex-direction:column;align-items:center;gap:10px}
+.formula-builder{display:flex;align-items:center;gap:10px;margin:10px 0;flex-wrap:wrap;justify-content:center}
+.formula-builder input{width:60px;text-align:center}
+.formula-builder select{width:80px;text-align:center}
+.formula-preview{background:#f5f5f5;padding:10px;border-radius:5px;margin:10px 0;font-size:18px;min-height:30px}
+</style>
+</head>
+<body>
+<h1>🧮 千早算数クエスト - 6年生分数の割り算版</h1>
+
+<div id="start">
+<h2>モードを選択してください</h2>
+<div id="playerIdDisplay" class="player-id" style="display:none">👤 プレイヤーID: <span id="playerId"></span></div>
+<div id="pointsDisplay" class="points-display" style="display:none">💰 総ポイント: <span id="totalPoints">0</span>P</div>
+<div class="info">
+<div class="mode-info select"><h3>🎮 選べるモード</h3><p>• 好きなレベルを選んで練習<br>• 10問連続正解でレベルクリア<br>• 正解でポイント獲得（少なめ）</p></div>
+<div class="mode-info practice"><h3>📚 練習モード</h3><p>• 各レベルで5問連続正解で次のレベルへ<br>• 間違えたらそのレベルのカウントが0に戻る<br>• レベルアップでボーナスポイント（中程度）</p></div>
+<div class="mode-info summary"><h3>🎯 まとめモード</h3><p>• 全10レベル×各5問＝計50問に挑戦<br>• 一問でも間違えるとゲームオーバー<br>• クリア時間に応じて大量ポイント獲得<br>• <strong>クリアで隠しステージ解放！</strong></p></div>
+<div id="hiddenModeInfo" class="mode-info hidden" style="display:none"><h3>👑 隠しステージ</h3><p>• 超高難度の分数の割り算問題に挑戦<br>• 全10問クリアで「分数の割り算マスター」の称号獲得<br>• 派手なアニメーションで祝福！</p></div>
+</div>
+<button class="mode-btn select" onclick="showLevelSelect()">🎮 選べるモード</button>
+<button class="mode-btn practice" onclick="selectMode('practice')">📚 練習モード</button>
+<button class="mode-btn" onclick="selectMode('summary')">🎯 まとめモード</button>
+<button id="hiddenStageBtn" class="mode-btn hidden" onclick="selectMode('hidden')" style="display:none">👑 隠しステージ</button>
+<div style="margin-top: 20px;">
+    <button onclick="displayFirebaseRanking()">🌍 グローバルランキング表示</button>
+</div>
+</div>
+
+<div id="levelSelect" style="display:none">
+<h2>🎮 レベルを選択してください</h2>
+<div class="level-select">
+<div class="level-btn" onclick="selectLevel(1)"><h4>➗ レベル1</h4><p>分数÷分数</p></div>
+<div class="level-btn" onclick="selectLevel(2)"><h4>🔢 レベル2</h4><p>分数÷分数×分数</p></div>
+<div class="level-btn" onclick="selectLevel(3)"><h4>🔲 レベル3</h4><p>整数÷分数、帯分数÷分数</p></div>
+<div class="level-btn" onclick="selectLevel(4)"><h4>⚖️ レベル4</h4><p>大小比較</p></div>
+<div class="level-btn" onclick="selectLevel(5)"><h4>📝 レベル5</h4><p>式を作る問題</p></div>
+<div class="level-btn" onclick="selectLevel(6)"><h4>🔀 レベル6</h4><p>小数・整数・分数の混合計算</p></div>
+<div class="level-btn" onclick="selectLevel(7)"><h4>⏰ レベル7</h4><p>分数で表す（時間・長さ）</p></div>
+<div class="level-btn" onclick="selectLevel(8)"><h4>📊 レベル8</h4><p>分数を使った文章題</p></div>
+<div class="level-btn" onclick="selectLevel(9)"><h4>✖️ レベル9</h4><p>分数の倍</p></div>
+<div class="level-btn" onclick="selectLevel(10)"><h4>👑 レベル10</h4><p>もとにする大きさを求める</p></div>
+</div>
+<button onclick="backToStart()">トップ画面にもどる</button>
+</div>
+
+<div id="game" style="display:none">
+<div class="info">
+<div id="modeDisplay"></div>
+<div>レベル<span id="lv">1</span>/10 - <span id="lvInfo"></span></div>
+<div class="progress"><div class="progress-bar" id="progressBar"></div></div>
+<div id="levelProgress"></div>
+<div id="sessionPoints" class="session-points" style="display:none">今回のセッション: <span id="sessionPointsValue">0</span>P</div>
+</div>
+
+<div id="timerDisplay" class="timer" style="display:none">⏱️ 経過時間: <span id="timer">00:00</span></div>
+
+<div class="nav-buttons">
+<button class="nav-btn" onclick="backToStart()">トップ画面にもどる</button>
+<button class="nav-btn" id="levelSelectBtn" onclick="backToLevelSelect()" style="display:none">レベル選択にもどる</button>
+</div>
+
+<div class="level-indicator" id="levelIndicator"></div>
+<div class="monster" id="monster">➗</div>
+<div class="question" id="q"></div>
+
+<div id="answerSections" class="answer-sections">
+<div class="answer-section">
+<h3>分数で答える（必ず約分）</h3>
+<div class="fraction-input">
+<input type="number" id="n" placeholder="分子" min="0">
+<div class="fraction-line"></div>
+<input type="number" id="d" placeholder="分母" min="1">
+</div>
+<div id="fUnit" class="unit-display" style="display:none"></div>
+<button class="submit-btn" onclick="submitFraction()">分数で答える</button>
+</div>
+
+<div class="answer-section" id="mixedSection" style="display:none">
+<h3>帯分数で答える（必ず約分）</h3>
+<div class="mixed-input">
+<input type="number" id="mw" placeholder="整数" min="0">
+<div class="fraction-input" style="margin:0">
+<input type="number" id="mn" placeholder="分子" min="0">
+<div class="fraction-line"></div>
+<input type="number" id="md" placeholder="分母" min="1">
+</div>
+</div>
+<div id="mUnit" class="unit-display" style="display:none"></div>
+<button class="submit-btn" onclick="submitMixed()">帯分数で答える</button>
+</div>
+
+<div class="answer-section">
+<h3>整数・小数で答える</h3>
+<div class="normal-input">
+<input type="text" id="norm" placeholder="答えを入力">
+<div id="nUnit" class="unit-display" style="display:none"></div>
+</div>
+<button class="submit-btn" onclick="submitNormal()">整数・小数で答える</button>
+</div>
+</div>
+
+<div id="formulaSection" class="answer-sections" style="display:none">
+<div class="formula-section">
+<h3>式を作る（計算はしない）</h3>
+<div class="formula-input">
+<div class="formula-builder">
+<input type="number" id="f1n" placeholder="分子" min="0">
+<span>/</span>
+<input type="number" id="f1d" placeholder="分母" min="1">
+<select id="operator">
+<option value="">記号選択</option>
+<option value="÷">÷</option>
+<option value="×">×</option>
+<option value="+">+</option>
+<option value="-">-</option>
+</select>
+<input type="number" id="f2n" placeholder="分子" min="0">
+<span>/</span>
+<input type="number" id="f2d" placeholder="分母" min="1">
+</div>
+<div class="formula-preview" id="formulaPreview">式がここに表示されます</div>
+</div>
+<button class="submit-btn" onclick="submitFormula()">式で答える</button>
+</div>
+</div>
+
+<div id="comparisonInput" style="display:none" class="comparison-options">
+<button class="comparison-btn" onclick="selectComparison(this, 'left')">左がわ</button>
+<button class="comparison-btn" onclick="selectComparison(this, 'right')">右がわ</button>
+<button class="comparison-btn" onclick="selectComparison(this, 'equal')">同じ</button>
+<br>
+<button class="submit-btn" onclick="submitComparison()" style="margin-top:15px">答える</button>
+</div>
+
+<div id="wrong" style="display:none">
+<div id="almostMsg" class="almost-msg" style="display:none"><strong>約分できます！</strong><br><span id="almostText"></span></div>
+<div id="wrongMsg" class="error-msg">まちがいです。</div>
+<div id="correctAnswer" class="correct-answer" style="display:none"><strong>正解：</strong><span id="correctText"></span></div>
+<div id="practiceMsg" style="display:none"><p>このレベルのカウントが0に戻ります。頑張って！</p></div>
+<div id="selectMsg" style="display:none"><p>連続正解カウントが0に戻ります。もう一度挑戦しましょう！</p></div>
+<button onclick="retry()">もう一度</button>
+<button onclick="next()">つぎへ</button>
+<button id="backToSelectBtn" onclick="backToLevelSelect()" style="display:none">レベル選択に戻る</button>
+</div>
+
+<div class="status">
+<span>スコア: <span id="score">0</span></span>
+<span id="totalQ" style="display:none"> / 50問中</span>
+<span id="hiddenQ" style="display:none"> / 10問中</span>
+<span id="selectQ" style="display:none"> / 10問中</span>
+</div>
+</div>
+
+<div id="gameover" style="display:none" class="gameover">
+<h1>ゲームオーバー</h1>
+<div class="monster" style="font-size:120px">😵</div>
+<h2>残念！</h2>
+<div class="info">
+<p>到達レベル: <span id="finalLv"></span>/10</p>
+<p>正解数: <span id="finalScore1"></span>問</p>
+<p id="finalTime" style="display:none">経過時間: <span id="finalTimeValue"></span></p>
+<div id="gameoverPoints" class="points-earned" style="display:none">🎉 獲得ポイント: <span id="gameoverPointsValue">0</span>P</div>
+</div>
+<div id="globalRankingGameover" class="global-ranking">
+<h3>🌍 全体ランキング</h3>
+<div id="globalRankingListGameover"></div>
+</div>
+<button onclick="restart()">もう一度</button>
+</div>
+
+<div id="clear" style="display:none" class="clear-screen">
+<h1>🎉 ゲームクリア！ 🎉</h1>
+<div class="monster" style="font-size:120px">👑</div>
+<h2>おめでとう！全レベル制覇！</h2>
+<div class="info">
+<p>最終スコア: <span id="finalScore2"></span>問正解</p>
+<p id="clearTime">クリア時間: <span id="clearTimeValue"></span></p>
+<div id="pointsEarned" class="points-earned" style="display:none">🎉 獲得ポイント: <span id="earnedPoints">0</span>P</div>
+</div>
+<div id="globalRankingClear" class="global-ranking" style="display:none">
+<h3>🌍 全体ランキング</h3>
+<div id="globalRankingListClear"></div>
+</div>
+<div id="hiddenStageUnlock" class="hidden-stage-unlock" style="display:none;padding:20px;margin:20px;border-radius:15px;">
+<h3>🌟 隠しステージが解放されました！ 🌟</h3>
+<p>今すぐ隠しステージに挑戦できます！</p>
+</div>
+<button onclick="restart()">もう一度</button>
+</div>
+
+<div id="levelClear" style="display:none" class="level-clear-screen">
+<h1>🎉 レベルクリア！ 🎉</h1>
+<div class="monster" style="font-size:120px">🏆</div>
+<h2>おめでとう！レベル<span id="clearedLevel"></span>をクリアしました！</h2>
+<div class="info">
+<p>10問連続正解達成！</p>
+<div id="levelClearPoints" class="points-earned">🎉 獲得ポイント: <span id="levelClearPointsValue">0</span>P</div>
+</div>
+<button onclick="backToLevelSelect()">レベル選択に戻る</button>
+</div>
+
+<div id="hiddenClear" style="display:none">
+<div style="background:linear-gradient(45deg,#ff9a9e,#fecfef,#a8e6cf,#dcedc1);padding:40px;border-radius:20px;animation:rainbow 3s infinite;">
+<h1>🌟 隠しステージクリア！ 🌟</h1>
+<div class="monster master-celebration" style="font-size:150px;">👑</div>
+<h2>🏆 分数の割り算マスター誕生！ 🏆</h2>
+<p style="font-size:20px;color:#d32f2f;font-weight:bold;">あなたは真の分数の割り算の達人です！</p>
+<div style="margin:20px 0;font-size:18px;">
+<p>隠しステージ全10問完全制覇</p>
+<p>最終スコア: <span id="hiddenFinalScore"></span>問正解</p>
+<div id="hiddenPointsEarned" class="points-earned" style="display:none">🎉 獲得ポイント: <span id="hiddenEarnedPoints">0</span>P</div>
+</div>
+<div id="globalRankingHidden" class="global-ranking" style="display:none">
+<h3>🌍 全体ランキング</h3>
+<div id="globalRankingListHidden"></div>
+</div>
+<button onclick="restart()" style="padding:15px 30px;font-size:20px;background:#4CAF50;color:white;border:none;border-radius:10px;cursor:pointer;">トップに戻る</button>
+</div>
+</div>
+
+<div id="celebration" class="correct-celebration"></div>
+
+<script>
+// Firebase関連の関数
+async function savePlayerScore(playerId, points) {
+    try {
+        const playerRef = window.firestore.doc(window.db, 'players', playerId);
+        
+        const docSnap = await window.firestore.getDoc(playerRef);
+        let shouldUpdate = true;
+        
+        if (docSnap.exists()) {
+            const existingPoints = docSnap.data().totalPoints || 0;
+            shouldUpdate = points > existingPoints;
+        }
+        
+        if (shouldUpdate) {
+            await window.firestore.setDoc(playerRef, {
+                playerId: playerId,
+                totalPoints: points,
+                lastUpdate: window.firestore.serverTimestamp()
+            }, { merge: true });
+            
+            console.log('スコアが保存されました:', points);
+            return true;
+        } else {
+            console.log('既存のスコアの方が高いため更新しませんでした');
+            return false;
+        }
+    } catch (error) {
+        console.error('スコア保存エラー:', error);
+        return false;
+    }
+}
+
+async function fetchTopRanking(limitCount = 10) {
+    try {
+        const rankingQuery = window.firestore.query(
+            window.firestore.collection(window.db, 'players'),
+            window.firestore.orderBy('totalPoints', 'desc'),
+            window.firestore.limit(limitCount)
+        );
+        
+        const querySnapshot = await window.firestore.getDocs(rankingQuery);
+        const rankings = [];
+        
+        querySnapshot.forEach((doc, index) => {
+            const data = doc.data();
+            rankings.push({
+                rank: index + 1,
+                playerId: data.playerId,
+                totalPoints: data.totalPoints,
+                lastUpdate: data.lastUpdate
+            });
+        });
+        
+        return rankings;
+    } catch (error) {
+        console.error('ランキング取得エラー:', error);
+        return [];
+    }
+}
+
+async function getPlayerRank(playerId, playerPoints) {
+    try {
+        const allPlayersQuery = window.firestore.query(
+            window.firestore.collection(window.db, 'players'),
+            window.firestore.orderBy('totalPoints', 'desc')
+        );
+        
+        const querySnapshot = await window.firestore.getDocs(allPlayersQuery);
+        let rank = 1;
+        
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            if (data.totalPoints > playerPoints) {
+                rank++;
+            }
+        });
+        
+        return rank;
+    } catch (error) {
+        console.error('順位取得エラー:', error);
+        return null;
+    }
+}
+
+async function displayFirebaseRanking() {
+    const rankings = await fetchTopRanking(10);
+    const myRank = await getPlayerRank(playerId, totalPoints);
+    
+    const rankingDialog = document.createElement('div');
+    rankingDialog.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+        background: rgba(0,0,0,0.8); z-index: 2000; 
+        display: flex; align-items: center; justify-content: center;
+    `;
+    
+    let rankingHTML = `
+        <div style="background: white; padding: 30px; border-radius: 15px; max-width: 500px; width: 90%;">
+            <h2 style="color: #f57c00; margin-bottom: 20px; text-align: center;">🌍 グローバルランキング</h2>
+    `;
+    
+    if (rankings.length === 0) {
+        rankingHTML += '<p style="text-align: center;">ランキングデータがありません</p>';
+    } else {
+        const medals = ["🥇", "🥈", "🥉"];
+        rankings.forEach((ranking, index) => {
+            const medal = index < 3 ? medals[index] : `${index + 1}位`;
+            const isMyRank = ranking.playerId === playerId ? 'background: #e8f5e8; border: 2px solid #4caf50; font-weight: bold;' : 'background: #fff8e1;';
+            
+            rankingHTML += `
+                <div style="display: flex; justify-content: space-between; align-items: center; 
+                           padding: 10px 15px; margin: 5px 0; border-radius: 5px; ${isMyRank}">
+                    <span><span style="font-size: 18px; margin-right: 10px;">${medal}</span></span>
+                    <span>ID: ${ranking.playerId}</span>
+                    <span>${ranking.totalPoints}P</span>
+                </div>
+            `;
+        });
+        
+        if (myRank <= 10) {
+            rankingHTML += `
+                <div style="margin-top: 20px; padding-top: 15px; border-top: 2px solid #ddd;">
+                    <h4 style="text-align: center; color: #333;">あなたの順位</h4>
+                    <div style="display: flex; justify-content: space-between; align-items: center; 
+                               padding: 10px 15px; margin: 5px 0; border-radius: 5px; 
+                               background: #e8f5e8; border: 2px solid #4caf50; font-weight: bold;">
+                        <span><strong>${myRank || '圏外'}位</strong></span>
+                        <span><strong>ID: ${playerId}</strong></span>
+                        <span><strong>${totalPoints}P</strong></span>
+                    </div>
+                </div>
+            `;
+        }
+    }
+    
+    rankingHTML += `
+            <button onclick="this.parentElement.parentElement.remove()" 
+                    style="margin-top: 20px; padding: 12px 24px; font-size: 16px; 
+                           background: #4CAF50; color: white; border: none; border-radius: 8px; 
+                           cursor: pointer; display: block; margin-left: auto; margin-right: auto;">
+                閉じる
+            </button>
+        </div>
+    `;
+    
+    rankingDialog.innerHTML = rankingHTML;
+    document.body.appendChild(rankingDialog);
+}
+
+const $=id=>document.getElementById(id)||{style:{},textContent:'',innerHTML:'',value:'',classList:{add:()=>{},remove:()=>{}},appendChild:()=>{},remove:()=>{},focus:()=>{}};
+let state={score:0,level:1,prob:null,unit:"",mode:"",lvCount:0,totalQ:0,qNum:0,completed:new Set(),selectedComparison:null,selectQCount:0,startTime:null,timerInterval:null,hiddenQ:0,sessionPoints:0,selectCorrectCount:0,clearedLevels:new Set()};
+const monsters=["➗","🔢","🔲","⚖️","📝","🔀","⏰","📊","✖️","👑"];
+const lvNames=["分数÷分数","分数÷分数×分数","整数÷分数、帯分数÷分数","大小比較","式を作る問題","小数・整数・分数の混合計算","分数で表す（時間・長さ）","分数を使った文章題","分数の倍","もとにする大きさを求める"];
+let totalPoints=0,hiddenStageAvailable=false,playerId='';
+
+function generatePlayerId(){
+    const now=new Date();
+    const year=now.getFullYear();
+    const month=(now.getMonth()+1).toString().padStart(2,'0');
+    const day=now.getDate().toString().padStart(2,'0');
+    const hour=now.getHours().toString().padStart(2,'0');
+    const minute=now.getMinutes().toString().padStart(2,'0');
+    const second=now.getSeconds().toString().padStart(2,'0');
+    return`${year}${month}${day}${hour}${minute}${second}`;
+}
+
+function initializePlayerId(){
+    try{
+        playerId=localStorage.getItem('playerId');
+        if(!playerId){
+            playerId=generatePlayerId();
+            localStorage.setItem('playerId',playerId);
+        }
+    }catch(e){
+        playerId=generatePlayerId();
+    }
+}
+
+function loadClearedLevels(){
+    try{
+        const saved=localStorage.getItem('clearedLevels');
+        if(saved){
+            state.clearedLevels=new Set(JSON.parse(saved));
+        }
+    }catch(e){}
+}
+
+function saveClearedLevels(){
+    try{
+        localStorage.setItem('clearedLevels',JSON.stringify([...state.clearedLevels]));
+    }catch(e){}
+}
+
+function updateLevelSelectDisplay(){
+    for(let i=1;i<=10;i++){
+        const levelBtn=document.querySelector(`.level-btn:nth-child(${i})`);
+        if(levelBtn){
+            if(state.clearedLevels.has(i)){
+                levelBtn.classList.add('cleared');
+            }else{
+                levelBtn.classList.remove('cleared');
+            }
+        }
+    }
+}
+
+function saveToGlobalRanking(points){
+    try{
+        let globalRanking=JSON.parse(localStorage.getItem('globalRanking')||'[]');
+        const existingIndex=globalRanking.findIndex(entry=>entry.id===playerId);
+        
+        if(existingIndex>=0){
+            if(globalRanking[existingIndex].points<points){
+                globalRanking[existingIndex].points=points;
+                globalRanking[existingIndex].lastUpdate=new Date().toISOString();
+            }
+        }else{
+            globalRanking.push({
+                id:playerId,
+                points:points,
+                lastUpdate:new Date().toISOString()
+            });
+        }
+        
+        globalRanking.sort((a,b)=>b.points-a.points);
+        globalRanking=globalRanking.slice(0,1000);
+        localStorage.setItem('globalRanking',JSON.stringify(globalRanking));
+        return globalRanking;
+    }catch(e){
+        return[];
+    }
+}
+
+function displayGlobalRanking(containerId,myRankId){
+    const globalRanking=saveToGlobalRanking(totalPoints);
+    const myRank=globalRanking.findIndex(entry=>entry.id===playerId)+1;
+    
+    $(containerId.replace('#','')).style.display="block";
+    const rankingList=$(containerId.replace('#','')+'List');
+    rankingList.innerHTML="";
+    
+    const medals=["🥇","🥈","🥉"];
+    for(let i=0;i<Math.min(10,globalRanking.length);i++){
+        const rankDiv=document.createElement("div");
+        rankDiv.className="global-ranking-item";
+        if(globalRanking[i].id===playerId)rankDiv.classList.add("my-rank");
+        
+        const medal = i < 3 ? medals[i] : `${i+1}位`;
+        rankDiv.innerHTML=`
+            <span><span class="rank-medal">${medal}</span></span>
+            <span>ID: ${globalRanking[i].id}</span>
+            <span>${globalRanking[i].points}P</span>
+        `;
+        rankingList.appendChild(rankDiv);
+    }
+    
+    if(myRankId && myRank <= 10){
+        const myRankDiv=$(myRankId.replace('#',''));
+        myRankDiv.innerHTML=`
+            <div class="global-ranking-item my-rank">
+                <span><strong>${myRank}位</strong></span>
+                <span><strong>ID: ${playerId}</strong></span>
+                <span><strong>${totalPoints}P</strong></span>
+            </div>
+        `;
+    }
+}
+
+function enableHiddenStage(){hiddenStageAvailable=true;$("hiddenStageBtn").style.display="inline-block";$("hiddenModeInfo").style.display="block"}
+function disableHiddenStage(){hiddenStageAvailable=false;$("hiddenStageBtn").style.display="none";$("hiddenModeInfo").style.display="none"}
+
+try{totalPoints=parseInt(localStorage.getItem('totalPoints')||'0')}catch(e){}
+const titles={divisionMaster:{name:"分数の割り算マスター",description:"隠しステージを制覇した真の分数の割り算の達人",unlocked:false}};
+
+window.addEventListener('load',()=>{
+    initializePlayerId();
+    loadClearedLevels();
+    $("playerIdDisplay").style.display="block";
+    $("playerId").textContent=playerId;
+    if(totalPoints>0){
+        $("pointsDisplay").style.display="block";
+        $("totalPoints").textContent=totalPoints;
+    }
+    
+    // 式の入力フィールドの変更を監視
+    ['f1n', 'f1d', 'operator', 'f2n', 'f2d'].forEach(id => {
+        $(id).addEventListener('input', updateFormulaPreview);
+        $(id).addEventListener('change', updateFormulaPreview);
+    });
+});
+
+function updateFormulaPreview() {
+    const f1n = $("f1n").value;
+    const f1d = $("f1d").value;
+    const operator = $("operator").value;
+    const f2n = $("f2n").value;
+    const f2d = $("f2d").value;
+    
+    let preview = "";
+    if (f1n && f1d) {
+        preview += `${f1n}/${f1d}`;
+    }
+    if (operator) {
+        preview += ` ${operator} `;
+    }
+    if (f2n && f2d) {
+        preview += `${f2n}/${f2d}`;
+    }
+    
+    $("formulaPreview").textContent = preview || "式がここに表示されます";
+}
+
+const gcd=(a,b)=>b?gcd(b,a%b):a;
+const R=(min,max)=>Math.floor(Math.random()*(max-min+1))+min;
+function simplify(n,d){if(d<0){n=-n;d=-d}const g=gcd(Math.abs(n),Math.abs(d));return[n/g,d/g]}
+function randFrac(maxN=10,maxD=10){let n,d;do{n=R(1,maxN);d=R(2,maxD)}while(gcd(n,d)!==1||n>=d);return[n,d]}
+function frac(n,d){return`<span class="fraction-display"><span class="numerator">${n}</span><span class="fraction-bar"></span><span class="denominator">${d}</span></span>`}
+function mixedFrac(w,n,d){if(n>=d){w+=Math.floor(n/d);n=n%d}return n===0?`${w}`:`${w} ${frac(n,d)}`}
+function formatAnswer(n,d,u=""){const[sn,sd]=simplify(n,d);return sd===1?sn+u:`${sn}/${sd}`+u}
+function formatTime(s){const m=Math.floor(s/60);return`${m.toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`}
+
+function calculateClearPoints(clearTime){
+    const basePoints = 2000;
+    if(clearTime<=300)return basePoints * 10;
+    else if(clearTime<=600)return 1500 * 10;
+    else if(clearTime<=900)return 1200 * 10;
+    else if(clearTime<=1200)return 1000 * 10;
+    else if(clearTime<=1800)return 800 * 10;
+    else return 500 * 10;
+}
+
+function calculateLevelPoints(level,mode){
+    const basePoints = level*50;
+    if(mode==='practice')return Math.floor(basePoints*0.3);
+    else if(mode==='select')return Math.floor(basePoints*0.5);
+    else return basePoints;
+}
+
+function calculateCorrectPoints(level,mode){
+    const basePoints = Math.min(level*10,100);
+    if(mode==='practice')return Math.floor(basePoints*0.3);
+    else if(mode==='select')return Math.floor(basePoints*0.1);
+    else return basePoints;
+}
+
+async function addPoints(points,showAnimation=true){
+    totalPoints+=points;
+    state.sessionPoints+=points;
+    try{localStorage.setItem('totalPoints',totalPoints.toString())}catch(e){}
+    $("totalPoints").textContent=totalPoints;
+    $("sessionPointsValue").textContent=state.sessionPoints;
+    $("pointsDisplay").style.display="block";
+    $("sessionPoints").style.display="block";
+    
+    await savePlayerScore(playerId, totalPoints);
+    
+    if(showAnimation)showPointsAnimation(points);
+}
+
+function showPointsAnimation(points){
+    const pointsDiv=document.createElement('div');
+    pointsDiv.innerHTML=`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(45deg,#ffd700,#ffed4e);color:#d32f2f;padding:20px;border-radius:15px;font-size:24px;font-weight:bold;z-index:3000;animation:pointsEarn 2s;border:3px solid #ff6b6b;">+${points}P 獲得！</div>`;
+    document.body.appendChild(pointsDiv);
+    setTimeout(()=>pointsDiv.remove(),2000);
+}
+
+function startTimer(){
+    if(state.mode==='summary'||state.mode==='hidden'){
+        state.startTime=Date.now();
+        $("timerDisplay").style.display="block";
+        state.timerInterval=setInterval(updateTimer,1000);
+    }
+}
+
+function updateTimer(){
+    if(state.startTime){
+        const elapsed=Math.floor((Date.now()-state.startTime)/1000);
+        $("timer").textContent=formatTime(elapsed);
+    }
+}
+
+function stopTimer(){
+    if(state.timerInterval){
+        clearInterval(state.timerInterval);
+        state.timerInterval=null;
+    }
+}
+
+function getElapsedTime(){
+    return state.startTime?Math.floor((Date.now()-state.startTime)/1000):0;
+}
+
+function generateHiddenProblem(){
+    const type=R(1,5);
+    switch(type){
+        case 1:{
+            // 複雑な分数の割り算
+            const[n1,d1]=randFrac(15,20);
+            const[n2,d2]=randFrac(15,20);
+            const[n3,d3]=randFrac(15,20);
+            return{q:`${frac(n1,d1)} ÷ ${frac(n2,d2)} ÷ ${frac(n3,d3)} =`,n:n1*d2*d3,d:d1*n2*n3,type:'fraction',mixed:false};
+        }
+        case 2:{
+            // 帯分数を含む複雑な計算
+            const w1=R(2,4),d1=R(5,8),n1=R(1,d1-1);
+            const[n2,d2]=randFrac(12,15);
+            const i1=w1*d1+n1;
+            return{q:`${mixedFrac(w1,n1,d1)} ÷ ${frac(n2,d2)} × ${frac(n2,d2)} =`,n:i1,d:d1,type:'fraction',mixed:true};
+        }
+        case 3:{
+            // 文章題（複雑）
+            const total=R(120,200);
+            const[n1,d1]=randFrac(8,15);
+            const[n2,d2]=randFrac(8,15);
+            return{q:`${total}個のお菓子を${frac(n1,d1)}ずつ分けると何人に分けられますか？さらにその人数を${frac(n2,d2)}で割ると何人になりますか？`,n:total*d1*d2,d:n1*n2,u:"人",type:'fraction',mixed:false};
+        }
+        case 4:{
+            // 時間の複雑な計算
+            const hours=R(2,5);
+            const[n1,d1]=randFrac(8,12);
+            const[n2,d2]=randFrac(6,10);
+            return{q:`${hours}時間の${frac(n1,d1)}を${frac(n2,d2)}で割ると何分ですか？`,n:hours*60*n1*d2,d:d1*n2,u:"分",type:'fraction',mixed:false};
+        }
+        case 5:{
+            // 比較問題（複雑）
+            const[n1,d1]=randFrac(20,30);
+            const[n2,d2]=randFrac(20,30);
+            const[n3,d3]=randFrac(20,30);
+            const left=(n1*d2*d3)/(d1*n2*n3);
+            const right=1;
+            return{q:`${frac(n1,d1)} ÷ ${frac(n2,d2)} ÷ ${frac(n3,d3)} と 1 を比べて、どちらが大きいか答えてください`,left:left,right:right,type:'comparison'};
+        }
+    }
+}
+
 function generateProblem(lv){
     if(state.mode==='hidden')return generateHiddenProblem();
     switch(lv){
