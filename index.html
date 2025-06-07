@@ -1,7 +1,248 @@
-function unlockTitle(titleKey){
-    if(titles[titleKey]){
-        titles[titleKey].unlocked=true;
-        try{localStorage.setItem('titles',JSON.stringify(titles))}catch(e){}
+function generateProblem(lv){
+    if(state.mode==='hidden')return generateHiddenProblem();
+    switch(lv){
+        case 1:{
+            // 分数÷分数
+            const[n1,d1]=randFrac(8,12);
+            const[n2,d2]=randFrac(8,12);
+            return{q:`${frac(n1,d1)} ÷ ${frac(n2,d2)} =`,n:n1*d2,d:d1*n2,type:'fraction',mixed:false};
+        }
+        case 2:{
+            // 分数÷分数×分数 または 分数×分数÷分数
+            const[n1,d1]=randFrac(6,10);
+            const[n2,d2]=randFrac(6,10);
+            const[n3,d3]=randFrac(6,10);
+            if(R(1,2)===1){
+                return{q:`${frac(n1,d1)} ÷ ${frac(n2,d2)} × ${frac(n3,d3)} =`,n:n1*d2*n3,d:d1*n2*d3,type:'fraction',mixed:false};
+            }else{
+                return{q:`${frac(n1,d1)} × ${frac(n2,d2)} ÷ ${frac(n3,d3)} =`,n:n1*n2*d3,d:d1*d2*n3,type:'fraction',mixed:false};
+            }
+        }
+        case 3:{
+            // 整数÷分数、帯分数÷分数など
+            const type=R(1,4);
+            switch(type){
+                case 1:{
+                    // 整数÷分数
+                    const i=R(2,8);
+                    const[n,d]=randFrac(6,10);
+                    return{q:`${i} ÷ ${frac(n,d)} =`,n:i*d,d:n,type:'fraction',mixed:true};
+                }
+                case 2:{
+                    // 帯分数÷真分数
+                    const w=R(1,3),d1=R(3,6),n1=R(1,d1-1);
+                    const[n2,d2]=randFrac(6,8);
+                    const i1=w*d1+n1;
+                    return{q:`${mixedFrac(w,n1,d1)} ÷ ${frac(n2,d2)} =`,n:i1*d2,d:d1*n2,type:'fraction',mixed:true};
+                }
+                case 3:{
+                    // 真分数÷帯分数
+                    const[n1,d1]=randFrac(6,8);
+                    const w=R(1,2),d2=R(3,5),n2=R(1,d2-1);
+                    const i2=w*d2+n2;
+                    return{q:`${frac(n1,d1)} ÷ ${mixedFrac(w,n2,d2)} =`,n:n1*d2,d:d1*i2,type:'fraction',mixed:false};
+                }
+                case 4:{
+                    // 帯分数÷帯分数
+                    const w1=R(1,2),d1=R(3,5),n1=R(1,d1-1);
+                    const w2=R(1,2),d2=R(3,5),n2=R(1,d2-1);
+                    const i1=w1*d1+n1,i2=w2*d2+n2;
+                    return{q:`${mixedFrac(w1,n1,d1)} ÷ ${mixedFrac(w2,n2,d2)} =`,n:i1*d2,d:d1*i2,type:'fraction',mixed:true};
+                }
+            }
+        }
+        case 4:{
+            // 大小比較（修正版：答えがランダムになるように）
+            const type=R(1,3);
+            switch(type){
+                case 1:{
+                    // 整数÷分数と整数の比較
+                    const i=R(3,6);
+                    const[n,d]=randFrac(6,10);
+                    const leftValue=i*d/n;
+                    const rightValue=i;
+                    const questionType=R(1,2)===1?"大きい":"小さい";
+                    return{q:`${i} ÷ ${frac(n,d)} と ${i} を比べて、どちらが${questionType}か答えてください`,left:leftValue,right:rightValue,type:'comparison',questionType:questionType};
+                }
+                case 2:{
+                    // 分数÷分数と分数の比較
+                    const[n1,d1]=randFrac(6,10);
+                    const[n2,d2]=randFrac(6,10);
+                    const leftValue=(n1*d2)/(d1*n2);
+                    const rightValue=n1/d1;
+                    const questionType=R(1,2)===1?"大きい":"小さい";
+                    return{q:`${frac(n1,d1)} ÷ ${frac(n2,d2)} と ${frac(n1,d1)} を比べて、どちらが${questionType}か答えてください`,left:leftValue,right:rightValue,type:'comparison',questionType:questionType};
+                }
+                case 3:{
+                    // 整数÷分数と整数の比較（別パターン）
+                    const i=R(4,8);
+                    const[n,d]=randFrac(8,12);
+                    const leftValue=i*d/n;
+                    const rightValue=i;
+                    const questionType=R(1,2)===1?"大きい":"小さい";
+                    return{q:`${i} ÷ ${frac(n,d)} と ${i} を比べて、どちらが${questionType}か答えてください`,left:leftValue,right:rightValue,type:'comparison',questionType:questionType};
+                }
+            }
+        }
+        case 5:{
+            // 式を作る問題（修正版：正しい答えの設定）
+            const type=R(1,2);
+            switch(type){
+                case 1:{
+                    // ホース問題（修正版：正しい答えの設定）
+                    const[n1,d1]=randFrac(6,10);
+                    const[n2,d2]=randFrac(6,10);
+                    const unit1=R(1,2)===1?"m":"L";
+                    const unit2="kg";
+                    const question=R(1,2)===1?"１"+unit1+"の重さを求めましょう":"１"+unit2+"の長さを求めましょう";
+                    if(question.includes("重さを求めましょう")){
+                        // n1/d1 unit1の重さがn2/d2 kg → 1unit1の重さ = n2/d2 ÷ n1/d1
+                        return{q:`${frac(n1,d1)}${unit1}の重さが${frac(n2,d2)}${unit2}のホースがあります。${question}`,correctFormula:{n1:n2,d1:d2,op:"÷",n2:n1,d2:d1},type:'formula'};
+                    }else{
+                        // n1/d1 unit1の重さがn2/d2 kg → 1kgの長さ = n1/d1 ÷ n2/d2
+                        return{q:`${frac(n1,d1)}${unit1}の重さが${frac(n2,d2)}${unit2}のホースがあります。${question}`,correctFormula:{n1:n1,d1:d1,op:"÷",n2:n2,d2:d2},type:'formula'};
+                    }
+                }
+                case 2:{
+                    // 米の重さ問題（修正版：正しい答えの設定）
+                    const[n1,d1]=randFrac(6,10);
+                    const[n2,d2]=randFrac(6,10);
+                    const question=R(1,2)===1?"１Ｌの重さを求めましょう":"１ｋｇのかさを求めましょう";
+                    if(question==="１Ｌの重さを求めましょう"){
+                        // 米n1/d1Lの重さがn2/d2kg → 1Lの重さ = n2/d2 ÷ n1/d1
+                        return{q:`米${frac(n1,d1)}Lの重さを量ったら${frac(n2,d2)}ｋｇでした。${question}`,correctFormula:{n1:n2,d1:d2,op:"÷",n2:n1,d2:d1},type:'formula'};
+                    }else{
+                        // 米n1/d1Lの重さがn2/d2kg → 1kgのかさ = n1/d1 ÷ n2/d2
+                        return{q:`米${frac(n1,d1)}Lの重さを量ったら${frac(n2,d2)}ｋｇでした。${question}`,correctFormula:{n1:n1,d1:d1,op:"÷",n2:n2,d2:d2},type:'formula'};
+                    }
+                }
+            }
+        }
+        case 6:{
+            // 小数÷分数×整数のような混合計算
+            const type=R(1,3);
+            switch(type){
+                case 1:{
+                    // 小数÷分数×整数
+                    const decimal=(R(10,50)/10);
+                    const[n,d]=randFrac(6,10);
+                    const integer=R(2,6);
+                    return{q:`${decimal} ÷ ${frac(n,d)} × ${integer} =`,n:decimal*d*integer*10,d:n*10,type:'fraction',mixed:false};
+                }
+                case 2:{
+                    // 整数×分数÷小数
+                    const integer=R(3,8);
+                    const[n,d]=randFrac(6,10);
+                    const decimal=(R(10,30)/10);
+                    return{q:`${integer} × ${frac(n,d)} ÷ ${decimal} =`,n:integer*n*10,d:d*decimal*10,type:'fraction',mixed:false};
+                }
+                case 3:{
+                    // 分数×小数÷整数
+                    const[n,d]=randFrac(6,10);
+                    const decimal=(R(10,40)/10);
+                    const integer=R(2,5);
+                    return{q:`${frac(n,d)} × ${decimal} ÷ ${integer} =`,n:n*decimal*10,d:d*integer*10,type:'fraction',mixed:false};
+                }
+            }
+        }
+        case 7:{
+            // 分数で表しましょう
+            const type=R(1,4);
+            switch(type){
+                case 1:{
+                    // 7秒は何分ですか？
+                    const seconds=R(5,50);
+                    return{q:`${seconds}秒は何分ですか？`,n:seconds,d:60,u:"分",type:'fraction',mixed:false};
+                }
+                case 2:{
+                    // 6分は何時間ですか？
+                    const minutes=R(5,50);
+                    return{q:`${minutes}分は何時間ですか？`,n:minutes,d:60,u:"時間",type:'fraction',mixed:false};
+                }
+                case 3:{
+                    // 3時間は何日ですか？
+                    const hours=R(2,20);
+                    return{q:`${hours}時間は何日ですか？`,n:hours,d:24,u:"日",type:'fraction',mixed:false};
+                }
+                case 4:{
+                    // 2時間20分は何時間ですか？
+                    const hours=R(1,3);
+                    const minutes=R(10,50);
+                    const totalMinutes=hours*60+minutes;
+                    return{q:`${hours}時間${minutes}分は何時間ですか？`,n:totalMinutes,d:60,u:"時間",type:'fraction',mixed:true};
+                }
+            }
+        }
+        case 8:{
+            // 分数を使った文章題（修正版：約分しやすい数字を使用し、時計問題を追加）
+            const type=R(1,3);
+            switch(type){
+                case 1:{
+                    // マラソン問題（約分しやすい数字を使用）
+                    const distance=[24,30,36,42,48,54,60][R(0,6)]; // 約分しやすい距離
+                    const hours=R(2,4);
+                    const minutes=[15,20,30,40,45][R(0,4)]; // 約分しやすい分数になる分を選択
+                    const totalMinutes=hours*60+minutes;
+                    return{q:`マラソンで${distance}ｋｍを${hours}時間${minutes}分で走りました。時速何ｋｍですか？`,n:distance*60,d:totalMinutes,u:"ｋｍ",type:'fraction',mixed:false};
+                }
+                case 2:{
+                    // 一般的な速度問題（約分しやすい数字を使用）
+                    const distance=[24,30,36,42,48,54,60][R(0,6)]; // 約分しやすい距離
+                    const hours=R(1,3);
+                    const minutes=[12,15,18,20,24,30,36,40,45][R(0,8)]; // 約分しやすい分数になる分
+                    const totalMinutes=hours*60+minutes;
+                    return{q:`${distance}ｋｍを${hours}時間${minutes}分で移動しました。時速何ｋｍですか？`,n:distance*60,d:totalMinutes,u:"ｋｍ",type:'fraction',mixed:false};
+                }
+                case 3:{
+                    // 時計の進み方問題（新規追加）
+                    const progressSeconds=[6,8,10,12,15,18,20,24][R(0,7)]; // 約分しやすい秒数
+                    const targetMinutes=[6,8,10,12,15,18,20,24][R(0,7)]; // 約分しやすい分数
+                    // progressSeconds秒を分数で表すと progressSeconds/60 分
+                    // targetMinutes分進むのに必要な日数 = targetMinutes ÷ (progressSeconds/60) = targetMinutes × 60 ÷ progressSeconds
+                    const answerNumerator=targetMinutes*60;
+                    const answerDenominator=progressSeconds;
+                    return{q:`1日に${progressSeconds}秒ずつ進む時計があります。この時計は何日で${targetMinutes}分進みますか？${progressSeconds}秒を分数で表して計算して答えましょう。`,n:answerNumerator,d:answerDenominator,u:"日",type:'fraction',mixed:false};
+                }
+            }
+        }
+        case 9:{
+            // 分数の倍
+            const type=R(1,2);
+            switch(type){
+                case 1:{
+                    // リボンの倍数問題
+                    const[n1,d1]=randFrac(6,10);
+                    const[n2,d2]=randFrac(6,10);
+                    return{q:`赤いリボンは${frac(n1,d1)}ｍです。青いリボンは${frac(n2,d2)}ｍです。青いリボンは赤いリボンの何倍ですか？`,n:n2*d1,d:d2*n1,u:"倍",type:'fraction',mixed:false};
+                }
+                case 2:{
+                    // 一般的な倍数問題
+                    const[n1,d1]=randFrac(6,10);
+                    const[n2,d2]=randFrac(6,10);
+                    const item=["ひも","テープ","板"][R(0,2)];
+                    return{q:`Aの${item}は${frac(n1,d1)}ｍです。Bの${item}は${frac(n2,d2)}ｍです。Bの${item}はAの${item}の何倍ですか？`,n:n2*d1,d:d2*n1,u:"倍",type:'fraction',mixed:false};
+                }
+            }
+        }
+        case 10:{
+            // もとにする大きさを求める問題
+            const type=R(1,2);
+            switch(type){
+                case 1:{
+                    // 本と雑誌の問題
+                    const price=R(600,1200);
+                    const[n,d]=randFrac(6,10);
+                    return{q:`${price}円の本を買いました。この本の値段は雑誌の値段の${frac(n,d)}倍です。雑誌の値段を求めましょう。`,n:price*d,d:n,u:"円",type:'fraction',mixed:false};
+                }
+                case 2:{
+                    // 一般的なもとの量問題
+                    const amount=R(200,800);
+                    const[n,d]=randFrac(6,10);
+                    const item=["ペン","ノート","消しゴム"][R(0,2)];
+                    return{q:`${amount}円の${item}を買いました。この${item}の値段は別の商品の${frac(n,d)}倍です。別の商品の値段を求めましょう。`,n:amount*d,d:n,u:"円",type:'fraction',mixed:false};
+                }
+            }
+        }
     }
 }
 
@@ -173,6 +414,464 @@ function updateProgressBar(){
     }
     
     progressBar.style.width=progress+"%";
+}
+
+function newProblem(){
+    state.prob=generateProblem(state.level);
+    state.unit=state.prob.u||"";
+    $("q").innerHTML=state.prob.q;
+    $("monster").textContent=monsters[state.level-1];
+    $("lv").textContent=state.level;
+    $("lvInfo").textContent=lvNames[state.level-1];
+    
+    // 単位表示の更新
+    if(state.unit){
+        $("fUnit").textContent=state.unit;
+        $("mUnit").textContent=state.unit;
+        $("nUnit").textContent=state.unit;
+        $("fUnit").style.display="block";
+        $("mUnit").style.display="block";
+        $("nUnit").style.display="block";
+    }else{
+        $("fUnit").style.display="none";
+        $("mUnit").style.display="none";
+        $("nUnit").style.display="none";
+    }
+    
+    // 入力フィールドのクリア
+    $("n").value="";
+    $("d").value="";
+    $("mw").value="";
+    $("mn").value="";
+    $("md").value="";
+    $("norm").value="";
+    $("f1n").value="";
+    $("f1d").value="";
+    $("operator").value="";
+    $("f2n").value="";
+    $("f2d").value="";
+    
+    // 表示の制御
+    if(state.prob.type==='comparison'){
+        $("answerSections").style.display="none";
+        $("formulaSection").style.display="none";
+        $("comparisonInput").style.display="block";
+        state.selectedComparison=null;
+        document.querySelectorAll('.comparison-btn').forEach(btn=>btn.classList.remove('selected'));
+    }else if(state.prob.type==='formula'){
+        $("answerSections").style.display="none";
+        $("comparisonInput").style.display="none";
+        $("formulaSection").style.display="flex";
+        updateFormulaPreview();
+    }else{
+        $("answerSections").style.display="flex";
+        $("formulaSection").style.display="none";
+        $("comparisonInput").style.display="none";
+        $("mixedSection").style.display=state.prob.mixed?"block":"none";
+    }
+    
+    $("wrong").style.display="none";
+    
+    // カーソル位置を適切な入力欄に設定
+    setTimeout(() => {
+        if(state.prob.type==='formula'){
+            $("f1n").focus();
+        }else if(state.prob.type!=='comparison'){
+            $("d").focus();
+        }
+    }, 100);
+}
+
+// 残りの関数は前回出力したコードと同じです...
+function submitFormula(){
+    const f1n=parseInt($("f1n").value);
+    const f1d=parseInt($("f1d").value);
+    const operator=$("operator").value;
+    const f2n=parseInt($("f2n").value);
+    const f2d=parseInt($("f2d").value);
+    
+    if(isNaN(f1n)||isNaN(f1d)||!operator||isNaN(f2n)||isNaN(f2d)){
+        alert('すべての項目を入力してください');
+        return;
+    }
+    
+    const correct=state.prob.correctFormula;
+    if(f1n===correct.n1&&f1d===correct.d1&&operator===correct.op&&f2n===correct.n2&&f2d===correct.d2){
+        handleCorrect();
+    }else{
+        handleWrong(`${correct.n1}/${correct.d1} ${correct.op} ${correct.n2}/${correct.d2}`);
+    }
+}
+
+function selectComparison(btn,choice){
+    document.querySelectorAll('.comparison-btn').forEach(b=>b.classList.remove('selected'));
+    btn.classList.add('selected');
+    state.selectedComparison=choice;
+}
+
+function submitComparison(){
+    if(!state.selectedComparison){
+        alert('選択肢を選んでください');
+        return;
+    }
+    
+    let correct=false;
+    const questionType=state.prob.questionType||"大きい";
+    
+    if(questionType==="大きい"){
+        if(state.selectedComparison==='left'&&state.prob.left>state.prob.right)correct=true;
+        if(state.selectedComparison==='right'&&state.prob.left<state.prob.right)correct=true;
+        if(state.selectedComparison==='equal'&&state.prob.left===state.prob.right)correct=true;
+    }else{
+        if(state.selectedComparison==='left'&&state.prob.left<state.prob.right)correct=true;
+        if(state.selectedComparison==='right'&&state.prob.left>state.prob.right)correct=true;
+        if(state.selectedComparison==='equal'&&state.prob.left===state.prob.right)correct=true;
+    }
+    
+    if(correct){
+        handleCorrect();
+    }else{
+        let correctAnswer;
+        if(questionType==="大きい"){
+            correctAnswer=state.prob.left>state.prob.right?'左がわ':
+                         state.prob.left<state.prob.right?'右がわ':'同じ';
+        }else{
+            correctAnswer=state.prob.left<state.prob.right?'左がわ':
+                         state.prob.left>state.prob.right?'右がわ':'同じ';
+        }
+        handleWrong(correctAnswer);
+    }
+}
+
+function submitFraction(){
+    const n=parseInt($("n").value);
+    const d=parseInt($("d").value);
+    if(isNaN(n)||isNaN(d)||d<=0){
+        alert('正しい数値を入力してください');
+        return;
+    }
+    checkFractionAnswer(n,d);
+}
+
+function submitMixed(){
+    const w=parseInt($("mw").value)||0;
+    const n=parseInt($("mn").value)||0;
+    const d=parseInt($("md").value);
+    if(isNaN(d)||d<=0){
+        alert('正しい数値を入力してください');
+        return;
+    }
+    const improperN=w*d+n;
+    checkFractionAnswer(improperN,d);
+}
+
+function submitNormal(){
+    const input=$("norm").value.trim();
+    if(!input){
+        alert('答えを入力してください');
+        return;
+    }
+    
+    let userAnswer;
+    if(input.includes('/')){
+        const parts=input.split('/');
+        if(parts.length!==2){
+            alert('分数は「分子/分母」の形で入力してください');
+            return;
+        }
+        const n=parseInt(parts[0]);
+        const d=parseInt(parts[1]);
+        if(isNaN(n)||isNaN(d)||d<=0){
+            alert('正しい数値を入力してください');
+            return;
+        }
+        checkFractionAnswer(n,d);
+        return;
+    }else{
+        userAnswer=parseFloat(input);
+        if(isNaN(userAnswer)){
+            alert('正しい数値を入力してください');
+            return;
+        }
+    }
+    
+    const[correctN,correctD]=simplify(state.prob.n,state.prob.d);
+    const correctDecimal=correctN/correctD;
+    
+    if(Math.abs(userAnswer-correctDecimal)<0.001){
+        handleCorrect();
+    }else{
+        handleWrong(formatAnswer(state.prob.n,state.prob.d,state.unit));
+    }
+}
+
+function checkFractionAnswer(userN,userD){
+    const[correctN,correctD]=simplify(state.prob.n,state.prob.d);
+    
+    // 約分されているかチェック
+    const userGcd = gcd(Math.abs(userN), Math.abs(userD));
+    
+    if(userGcd > 1){
+        // 約分されていない場合は間違いとして扱う
+        const[simplifiedN,simplifiedD]=simplify(userN,userD);
+        $("almostMsg").style.display="block";
+        $("almostText").textContent=`${userN}/${userD} は約分すると ${simplifiedN}/${simplifiedD} になります`;
+        $("correctAnswer").style.display="block";
+        $("correctText").textContent=formatAnswer(state.prob.n,state.prob.d,state.unit);
+        $("wrong").style.display="block";
+        return;
+    }
+    
+    // 約分されている場合のみ正解判定
+    if(userN===correctN&&userD===correctD){
+        handleCorrect();
+    }else{
+        handleWrong(formatAnswer(state.prob.n,state.prob.d,state.unit));
+    }
+}
+
+async function handleCorrect(){
+    state.score++;
+    $("score").textContent=state.score;
+    
+    const points=calculateCorrectPoints(state.level,state.mode);
+    await addPoints(points);
+    
+    $("monster").classList.add("correct");
+    setTimeout(()=>$("monster").classList.remove("correct"),1500);
+    
+    if(state.mode==='practice'){
+        state.lvCount++;
+        if(state.lvCount>=5){
+            state.completed.add(state.level);
+            const levelPoints=calculateLevelPoints(state.level,state.mode);
+            await addPoints(levelPoints);
+            
+            $("monster").classList.add("level-up");
+            setTimeout(()=>$("monster").classList.remove("level-up"),3000);
+            
+            if(state.level<10){
+                state.level++;
+                state.lvCount=0;
+            }else{
+                setTimeout(()=>{
+                    alert('練習モード全レベル完了！おめでとうございます！');
+                    backToStart();
+                },2000);
+                return;
+            }
+        }
+    }else if(state.mode==='summary'){
+        state.totalQ++;
+        if(state.totalQ>=50){
+            stopTimer();
+            const clearTime=getElapsedTime();
+            enableHiddenStage();
+            setTimeout(()=>showClear(clearTime),1000);
+            return;
+        }else if(state.totalQ%5===0){
+            state.level++;
+        }
+    }else if(state.mode==='hidden'){
+        state.hiddenQ++;
+        if(state.hiddenQ>=10){
+            stopTimer();
+            setTimeout(()=>showHiddenClear(),1000);
+            return;
+        }
+    }else if(state.mode==='select'){
+        state.selectQCount++;
+        state.selectCorrectCount++;
+        
+        // 10問連続正解でレベルクリア
+        if(state.selectCorrectCount>=10){
+            state.clearedLevels.add(state.level);
+            saveClearedLevels();
+            
+            const levelClearPoints=calculateLevelPoints(state.level,state.mode) * 2;
+            await addPoints(levelClearPoints);
+            
+            setTimeout(()=>showLevelClear(),1000);
+            return;
+        }
+    }
+    
+    updateLevelIndicator();
+    updateProgressBar();
+    setTimeout(newProblem,1500);
+}
+
+function handleWrong(correctAnswer){
+    $("almostMsg").style.display="none";
+    $("correctAnswer").style.display="block";
+    $("correctText").textContent=correctAnswer;
+    
+    if(state.mode==='practice'){
+        $("practiceMsg").style.display="block";
+        $("selectMsg").style.display="none";
+        $("backToSelectBtn").style.display="none";
+        state.lvCount=0;
+    }else if(state.mode==='summary'||state.mode==='hidden'){
+        stopTimer();
+        const finalTime=getElapsedTime();
+        setTimeout(()=>showGameOver(finalTime),2000);
+        return;
+    }else{
+        $("practiceMsg").style.display="none";
+        $("selectMsg").style.display="block";
+        $("backToSelectBtn").style.display="inline-block";
+        state.selectCorrectCount=0;
+    }
+    
+    $("monster").classList.add("wrong");
+    setTimeout(()=>$("monster").classList.remove("wrong"),1000);
+    $("wrong").style.display="block";
+    updateProgressBar();
+}
+
+function retry(){
+    $("wrong").style.display="none";
+    newProblem();
+}
+
+function next(){
+    $("wrong").style.display="none";
+    newProblem();
+}
+
+async function showGameOver(finalTime){
+    $("game").style.display="none";
+    $("gameover").style.display="block";
+    $("finalLv").textContent=state.level;
+    $("finalScore1").textContent=state.score;
+    
+    if(state.mode==='summary'||state.mode==='hidden'){
+        $("finalTime").style.display="block";
+        $("finalTimeValue").textContent=formatTime(finalTime);
+        
+        if(state.score > 0){
+            const gameoverPoints=state.level*20;
+            $("gameoverPoints").style.display="block";
+            $("gameoverPointsValue").textContent=gameoverPoints;
+            await addPoints(gameoverPoints);
+        }
+        
+        displayGlobalRanking('#globalRankingGameover','#myGlobalRankGameover');
+    }
+}
+
+async function showClear(clearTime){
+    $("game").style.display="none";
+    $("clear").style.display="block";
+    $("finalScore2").textContent=state.score;
+    $("clearTimeValue").textContent=formatTime(clearTime);
+    
+    const clearPoints=calculateClearPoints(clearTime);
+    $("pointsEarned").style.display="block";
+    $("earnedPoints").textContent=clearPoints;
+    await addPoints(clearPoints);
+    
+    try{localStorage.setItem('summaryCleared','true')}catch(e){}
+    
+    createFireworks();
+    displayGlobalRanking('#globalRankingClear','#myGlobalRankClear');
+    
+    $("hiddenStageUnlock").style.display="block";
+}
+
+async function showLevelClear(){
+    $("game").style.display="none";
+    $("levelClear").style.display="block";
+    $("clearedLevel").textContent=state.level;
+    
+    const levelClearPoints=calculateLevelPoints(state.level,state.mode) * 2;
+    $("levelClearPointsValue").textContent=levelClearPoints;
+    
+    createFireworks();
+}
+
+async function showHiddenClear(){
+    $("game").style.display="none";
+    $("hiddenClear").style.display="block";
+    $("hiddenFinalScore").textContent=state.score;
+    
+    createMasterFireworks();
+    unlockTitle('divisionMaster');
+    
+    const hiddenPoints=3000;
+    $("hiddenPointsEarned").style.display="block";
+    $("hiddenEarnedPoints").textContent=hiddenPoints;
+    await addPoints(hiddenPoints);
+    
+    displayGlobalRanking('#globalRankingHidden','#myGlobalRankHidden');
+}
+
+function restart(){
+    state.sessionPoints=0;
+    backToStart();
+}
+
+function createFireworks(){
+    const celebration=$("celebration");
+    celebration.innerHTML="";
+    
+    for(let i=0;i<20;i++){
+        const firework=document.createElement("div");
+        firework.className="firework";
+        firework.style.left=Math.random()*100+"%";
+        firework.style.top=Math.random()*100+"%";
+        firework.style.animationDelay=Math.random()*2+"s";
+        celebration.appendChild(firework);
+        
+        setTimeout(()=>firework.remove(),3000);
+    }
+    
+    for(let i=0;i<50;i++){
+        const sparkle=document.createElement("div");
+        sparkle.className="sparkle";
+        sparkle.style.left=Math.random()*100+"%";
+        sparkle.style.top=Math.random()*100+"%";
+        sparkle.style.animationDelay=Math.random()*3+"s";
+        celebration.appendChild(sparkle);
+        
+        setTimeout(()=>sparkle.remove(),4000);
+    }
+}
+
+function createMasterFireworks(){
+    const celebration=$("celebration");
+    celebration.innerHTML="";
+    
+    for(let i=0;i<50;i++){
+        const firework=document.createElement("div");
+        firework.className="firework";
+        firework.style.left=Math.random()*100+"%";
+        firework.style.top=Math.random()*100+"%";
+        firework.style.animationDelay=Math.random()*3+"s";
+        firework.style.background=`hsl(${Math.random()*360},100%,50%)`;
+        celebration.appendChild(firework);
+        
+        setTimeout(()=>firework.remove(),5000);
+    }
+    
+    for(let i=0;i<100;i++){
+        const sparkle=document.createElement("div");
+        sparkle.className="sparkle";
+        sparkle.style.left=Math.random()*100+"%";
+        sparkle.style.top=Math.random()*100+"%";
+        sparkle.style.animationDelay=Math.random()*5+"s";
+        sparkle.style.background=`hsl(${Math.random()*360},100%,70%)`;
+        celebration.appendChild(sparkle);
+        
+        setTimeout(()=>sparkle.remove(),6000);
+    }
+}
+
+function unlockTitle(titleKey){
+    if(titles[titleKey]){
+        titles[titleKey].unlocked=true;
+        try{localStorage.setItem('titles',JSON.stringify(titles))}catch(e){}
+    }
 }
 
 try{
