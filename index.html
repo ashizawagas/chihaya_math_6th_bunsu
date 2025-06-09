@@ -150,6 +150,13 @@ select:focus{border-color:#2196f3;outline:none;box-shadow:0 0 5px rgba(33,150,24
 .formula-builder input{width:60px;text-align:center}
 .formula-builder select{width:80px;text-align:center}
 .formula-preview{background:#f5f5f5;padding:10px;border-radius:5px;margin:10px 0;font-size:18px;min-height:30px}
+
+/* 修正された式作成用の分数入力スタイル */
+.formula-fraction{display:inline-flex;flex-direction:column;align-items:center;margin:0 5px;vertical-align:middle}
+.formula-fraction input{width:50px;text-align:center;margin:2px 0;padding:8px;font-size:16px}
+.formula-fraction-line{width:60px;height:2px;background:#333;margin:2px 0}
+.formula-operator{display:inline-flex;align-items:center;margin:0 10px;vertical-align:middle}
+.formula-operator select{padding:8px;font-size:16px}
 </style>
 </head>
 <body>
@@ -252,9 +259,12 @@ select:focus{border-color:#2196f3;outline:none;box-shadow:0 0 5px rgba(33,150,24
 <h3>式を作る（計算はしない）</h3>
 <div class="formula-input">
 <div class="formula-builder">
+<div class="formula-fraction">
 <input type="number" id="f1n" placeholder="分子" min="0">
-<span>/</span>
+<div class="formula-fraction-line"></div>
 <input type="number" id="f1d" placeholder="分母" min="1">
+</div>
+<div class="formula-operator">
 <select id="operator">
 <option value="">記号選択</option>
 <option value="÷">÷</option>
@@ -262,9 +272,12 @@ select:focus{border-color:#2196f3;outline:none;box-shadow:0 0 5px rgba(33,150,24
 <option value="+">+</option>
 <option value="-">-</option>
 </select>
+</div>
+<div class="formula-fraction">
 <input type="number" id="f2n" placeholder="分子" min="0">
-<span>/</span>
+<div class="formula-fraction-line"></div>
 <input type="number" id="f2d" placeholder="分母" min="1">
+</div>
 </div>
 <div class="formula-preview" id="formulaPreview">式がここに表示されます</div>
 </div>
@@ -367,6 +380,23 @@ select:focus{border-color:#2196f3;outline:none;box-shadow:0 0 5px rgba(33,150,24
 </div>
 
 <div id="celebration" class="correct-celebration"></div>
+
+<!-- 手書き計算スペース（常時表示） -->
+<div id="handwritingSpace" style="margin-top:40px;padding:20px;background:#f0f8ff;border-radius:15px;border:3px solid #2196f3">
+<div class="info">
+<h2 style="color:#2196f3;margin:0 0 15px 0">📝 手書き計算スペース</h2>
+<p style="margin:0 0 15px 0;color:#666">マウスや指で自由に計算式や図を書けます</p>
+</div>
+<div style="background:white;border-radius:10px;padding:20px;border:2px solid #2196f3">
+<canvas id="drawArea" width="800" height="500" style="border:2px solid #2196f3;border-radius:8px;background:#fff;touch-action:none;display:block;margin:0 auto;cursor:crosshair"></canvas>
+<div style="margin-top:15px;text-align:center">
+<button onclick="clearDrawCanvas()" style="background:#ff9800;color:white;border:none;padding:10px 20px;border-radius:6px;margin:5px;cursor:pointer;font-size:14px">🗑️ クリア</button>
+</div>
+<div style="font-size:14px;color:#666;margin-top:15px;text-align:center;background:#f8f9fa;padding:10px;border-radius:6px">
+💡 ヒント: 筆算や図を描いて問題を解いてみましょう！小数の位取りや計算過程を書くと理解が深まります。
+</div>
+</div>
+</div>
 
 <script>
 // Firebase関連の関数
@@ -657,6 +687,11 @@ window.addEventListener('load',()=>{
         $(id).addEventListener('input', updateFormulaPreview);
         $(id).addEventListener('change', updateFormulaPreview);
     });
+    
+    // 手書きスペース初期化
+    setTimeout(function() {
+        initDrawingSpace();
+    }, 1000);
 });
 
 function updateFormulaPreview() {
@@ -759,6 +794,7 @@ function stopTimer(){
 function getElapsedTime(){
     return state.startTime?Math.floor((Date.now()-state.startTime)/1000):0;
 }
+
 
 function generateHiddenProblem(){
     const type=R(1,5);
@@ -1277,17 +1313,16 @@ function newProblem(){
     
     $("wrong").style.display="none";
     
-    // カーソル位置を適切な入力欄に設定
+    // カーソル位置を適切な入力欄に設定（レベル5では最初の分母に設定）
     setTimeout(() => {
         if(state.prob.type==='formula'){
-            $("f1n").focus();
+            $("f1d").focus(); // レベル5では最初の分母にカーソルを設定
         }else if(state.prob.type!=='comparison'){
             $("d").focus();
         }
     }, 100);
 }
 
-// 残りの関数は前回出力したコードと同じです...
 function submitFormula(){
     const f1n=parseInt($("f1n").value);
     const f1d=parseInt($("f1d").value);
@@ -1698,30 +1733,7 @@ document.addEventListener('keydown',function(e){
         }
     }
 });
-</script>
-</body>
-</html>
 
-
-
-<!-- 手書き計算スペース（常時表示） -->
-<div id="handwritingSpace" style="margin-top:40px;padding:20px;background:#f0f8ff;border-radius:15px;border:3px solid #2196f3">
-<div class="info">
-<h2 style="color:#2196f3;margin:0 0 15px 0">📝 手書き計算スペース</h2>
-<p style="margin:0 0 15px 0;color:#666">マウスや指で自由に計算式や図を書けます</p>
-</div>
-<div style="background:white;border-radius:10px;padding:20px;border:2px solid #2196f3">
-<canvas id="drawArea" width="800" height="500" style="border:2px solid #2196f3;border-radius:8px;background:#fff;touch-action:none;display:block;margin:0 auto;cursor:crosshair"></canvas>
-<div style="margin-top:15px;text-align:center">
-<button onclick="clearDrawCanvas()" style="background:#ff9800;color:white;border:none;padding:10px 20px;border-radius:6px;margin:5px;cursor:pointer;font-size:14px">🗑️ クリア</button>
-</div>
-<div style="font-size:14px;color:#666;margin-top:15px;text-align:center;background:#f8f9fa;padding:10px;border-radius:6px">
-💡 ヒント: 筆算や図を描いて問題を解いてみましょう！小数の位取りや計算過程を書くと理解が深まります。
-</div>
-</div>
-</div>
-
-<script>
 // 手書き描画機能の変数（名前を変更して競合を回避）
 let drawCanvas, drawCtx, isDrawingNow = false;
 
@@ -1861,3 +1873,5 @@ function manualInitDraw() {
   initDrawingSpace();
 }
 </script>
+</body>
+</html>
