@@ -43,6 +43,7 @@ body{font-family:Arial;text-align:center;background:#f0f8ff;margin:0;padding:20p
 .question{font-size:24px;margin:20px;padding:20px;background:white;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.1)}
 button{margin:10px;padding:12px 24px;font-size:16px;border:none;border-radius:8px;background:#4CAF50;color:white;cursor:pointer}
 button:hover{background:#45a049}
+button:disabled{background:#ccc;cursor:not-allowed}
 .mode-btn{background:#2196f3;padding:15px 30px;font-size:18px;margin:20px}
 .mode-btn:hover{background:#1976d2}
 .mode-btn.practice{background:#ff9800}
@@ -54,8 +55,10 @@ button:hover{background:#45a049}
 @keyframes hiddenPulse{0%,100%{transform:scale(1);box-shadow:0 0 10px #ff6b6b}50%{transform:scale(1.05);box-shadow:0 0 20px #ff6b6b}}
 input{font-size:18px;padding:10px;border:2px solid #ddd;border-radius:5px;margin:10px}
 input:focus{border-color:#2196f3;outline:none;box-shadow:0 0 5px rgba(33,150,243,.3)}
+input:disabled{background:#f5f5f5;color:#999;cursor:not-allowed}
 select{font-size:18px;padding:10px;border:2px solid #ddd;border-radius:5px;margin:10px}
 select:focus{border-color:#2196f3;outline:none;box-shadow:0 0 5px rgba(33,150,243,.3)}
+select:disabled{background:#f5f5f5;color:#999;cursor:not-allowed}
 .status{margin:15px 0;font-size:18px}
 .progress{background:#e0e0e0;border-radius:10px;margin:15px 0;height:20px;overflow:hidden}
 .progress-bar{height:100%;transition:width .3s}
@@ -87,10 +90,12 @@ select:focus{border-color:#2196f3;outline:none;box-shadow:0 0 5px rgba(33,150,24
 .unit-display{font-size:14px;font-weight:bold;color:#666;margin-top:5px}
 .submit-btn{padding:12px 20px;font-size:16px;background:#4CAF50;color:white;border:none;border-radius:8px;cursor:pointer}
 .submit-btn:hover{background:#45a049}
+.submit-btn:disabled{background:#ccc;cursor:not-allowed}
 .comparison-options{display:flex;justify-content:center;gap:15px;margin:20px 0}
 .comparison-btn{padding:12px 25px;font-size:16px;background:#e3f2fd;border:2px solid #2196f3;border-radius:8px;cursor:pointer}
 .comparison-btn:hover{background:#2196f3;color:white}
 .comparison-btn.selected{background:#2196f3;color:white}
+.comparison-btn:disabled{background:#f5f5f5;color:#999;cursor:not-allowed;border-color:#ddd}
 .fraction-display{display:inline-block;text-align:center;vertical-align:middle;margin:0 5px}
 .fraction-display .numerator{display:block;line-height:1.2}
 .fraction-display .denominator{display:block;line-height:1.2}
@@ -542,8 +547,8 @@ async function displayFirebaseRanking() {
     document.body.appendChild(rankingDialog);
 }
 
-const $=id=>document.getElementById(id)||{style:{},textContent:'',innerHTML:'',value:'',classList:{add:()=>{},remove:()=>{}},appendChild:()=>{},remove:()=>{},focus:()=>{}};
-let state={score:0,level:1,prob:null,unit:"",mode:"",lvCount:0,totalQ:0,qNum:0,completed:new Set(),selectedComparison:null,selectQCount:0,startTime:null,timerInterval:null,hiddenQ:0,sessionPoints:0,selectCorrectCount:0,clearedLevels:new Set()};
+const $=id=>document.getElementById(id)||{style:{},textContent:'',innerHTML:'',value:'',classList:{add:()=>{},remove:()=>{}},appendChild:()=>{},remove:()=>{},focus:()=>{},disabled:false};
+let state={score:0,level:1,prob:null,unit:"",mode:"",lvCount:0,totalQ:0,qNum:0,completed:new Set(),selectedComparison:null,selectQCount:0,startTime:null,timerInterval:null,hiddenQ:0,sessionPoints:0,selectCorrectCount:0,clearedLevels:new Set(),answerSubmitted:false};
 const monsters=["➗","🔢","🔲","⚖️","📝","🔀","⏰","📊","✖️","👑"];
 const lvNames=["分数÷分数","分数÷分数×分数","整数÷分数、帯分数÷分数","大小比較","式を作る問題","小数・整数・分数の混合計算","分数で表す（時間・長さ）","分数を使った文章題","分数の倍","もとにする大きさを求める"];
 let totalPoints=0,hiddenStageAvailable=false,playerId='';
@@ -785,6 +790,7 @@ function stopTimer(){
 function getElapsedTime(){
     return state.startTime?Math.floor((Date.now()-state.startTime)/1000):0;
 }
+
 
 function generateHiddenProblem(){
     const type=R(1,5);
@@ -1101,6 +1107,7 @@ function selectLevel(level){
     state.selectQCount = 0;
     state.selectCorrectCount = 0;
     state.sessionPoints = 0;
+    state.answerSubmitted = false; // 回答送信フラグをリセット
     
     $("start").style.display = "none";
     $("levelSelect").style.display = "none";
@@ -1130,6 +1137,7 @@ function selectMode(mode){
     state.hiddenQ=0;
     state.selectCorrectCount=0;
     state.sessionPoints=0;
+    state.answerSubmitted=false; // 回答送信フラグをリセット
     
     $("start").style.display="none";
     $("levelSelect").style.display="none";
@@ -1261,9 +1269,51 @@ function updateProgressBar(){
     progressBar.style.width=progress+"%";
 }
 
+// 入力フィールドと送信ボタンを無効化する関数
+function disableInputs(){
+    // 入力フィールドを無効化
+    $("n").disabled = true;
+    $("d").disabled = true;
+    $("mw").disabled = true;
+    $("mn").disabled = true;
+    $("md").disabled = true;
+    $("norm").disabled = true;
+    $("f1n").disabled = true;
+    $("f1d").disabled = true;
+    $("operator").disabled = true;
+    $("f2n").disabled = true;
+    $("f2d").disabled = true;
+    
+    // 送信ボタンを無効化
+    document.querySelectorAll('.submit-btn').forEach(btn => btn.disabled = true);
+    document.querySelectorAll('.comparison-btn').forEach(btn => btn.disabled = true);
+}
+
+// 入力フィールドと送信ボタンを有効化する関数
+function enableInputs(){
+    // 入力フィールドを有効化
+    $("n").disabled = false;
+    $("d").disabled = false;
+    $("mw").disabled = false;
+    $("mn").disabled = false;
+    $("md").disabled = false;
+    $("norm").disabled = false;
+    $("f1n").disabled = false;
+    $("f1d").disabled = false;
+    $("operator").disabled = false;
+    $("f2n").disabled = false;
+    $("f2d").disabled = false;
+    
+    // 送信ボタンを有効化
+    document.querySelectorAll('.submit-btn').forEach(btn => btn.disabled = false);
+    document.querySelectorAll('.comparison-btn').forEach(btn => btn.disabled = false);
+}
+
 function newProblem(){
     state.prob=generateProblem(state.level);
     state.unit=state.prob.u||"";
+    state.answerSubmitted=false; // 新しい問題では回答送信フラグをリセット
+    
     $("q").innerHTML=state.prob.q;
     $("monster").textContent=monsters[state.level-1];
     $("lv").textContent=state.level;
@@ -1296,6 +1346,9 @@ function newProblem(){
     $("f2n").value="";
     $("f2d").value="";
     
+    // 入力フィールドとボタンを有効化
+    enableInputs();
+    
     // 表示の制御
     if(state.prob.type==='comparison'){
         $("answerSections").style.display="none";
@@ -1327,6 +1380,8 @@ function newProblem(){
 }
 
 function submitFormula(){
+    if(state.answerSubmitted) return; // 既に回答済みの場合は処理しない
+    
     const f1n=parseInt($("f1n").value);
     const f1d=parseInt($("f1d").value);
     const operator=$("operator").value;
@@ -1338,6 +1393,9 @@ function submitFormula(){
         return;
     }
     
+    state.answerSubmitted=true; // 回答送信フラグを設定
+    disableInputs(); // 入力を無効化
+    
     const correct=state.prob.correctFormula;
     if(f1n===correct.n1&&f1d===correct.d1&&operator===correct.op&&f2n===correct.n2&&f2d===correct.d2){
         handleCorrect();
@@ -1347,16 +1405,23 @@ function submitFormula(){
 }
 
 function selectComparison(btn,choice){
+    if(state.answerSubmitted) return; // 既に回答済みの場合は処理しない
+    
     document.querySelectorAll('.comparison-btn').forEach(b=>b.classList.remove('selected'));
     btn.classList.add('selected');
     state.selectedComparison=choice;
 }
 
 function submitComparison(){
+    if(state.answerSubmitted) return; // 既に回答済みの場合は処理しない
+    
     if(!state.selectedComparison){
         alert('選択肢を選んでください');
         return;
     }
+    
+    state.answerSubmitted=true; // 回答送信フラグを設定
+    disableInputs(); // 入力を無効化
     
     let correct=false;
     const questionType=state.prob.questionType||"大きい";
@@ -1387,16 +1452,24 @@ function submitComparison(){
 }
 
 function submitFraction(){
+    if(state.answerSubmitted) return; // 既に回答済みの場合は処理しない
+    
     const n=parseInt($("n").value);
     const d=parseInt($("d").value);
     if(isNaN(n)||isNaN(d)||d<=0){
         alert('正しい数値を入力してください');
         return;
     }
+    
+    state.answerSubmitted=true; // 回答送信フラグを設定
+    disableInputs(); // 入力を無効化
+    
     checkFractionAnswer(n,d);
 }
 
 function submitMixed(){
+    if(state.answerSubmitted) return; // 既に回答済みの場合は処理しない
+    
     const w=parseInt($("mw").value)||0;
     const n=parseInt($("mn").value)||0;
     const d=parseInt($("md").value);
@@ -1404,28 +1477,41 @@ function submitMixed(){
         alert('正しい数値を入力してください');
         return;
     }
+    
+    state.answerSubmitted=true; // 回答送信フラグを設定
+    disableInputs(); // 入力を無効化
+    
     const improperN=w*d+n;
     checkFractionAnswer(improperN,d);
 }
 
 function submitNormal(){
+    if(state.answerSubmitted) return; // 既に回答済みの場合は処理しない
+    
     const input=$("norm").value.trim();
     if(!input){
         alert('答えを入力してください');
         return;
     }
     
+    state.answerSubmitted=true; // 回答送信フラグを設定
+    disableInputs(); // 入力を無効化
+    
     let userAnswer;
     if(input.includes('/')){
         const parts=input.split('/');
         if(parts.length!==2){
             alert('分数は「分子/分母」の形で入力してください');
+            state.answerSubmitted=false; // エラーの場合はフラグをリセット
+            enableInputs(); // 入力を再有効化
             return;
         }
         const n=parseInt(parts[0]);
         const d=parseInt(parts[1]);
         if(isNaN(n)||isNaN(d)||d<=0){
             alert('正しい数値を入力してください');
+            state.answerSubmitted=false; // エラーの場合はフラグをリセット
+            enableInputs(); // 入力を再有効化
             return;
         }
         checkFractionAnswer(n,d);
@@ -1434,6 +1520,8 @@ function submitNormal(){
         userAnswer=parseFloat(input);
         if(isNaN(userAnswer)){
             alert('正しい数値を入力してください');
+            state.answerSubmitted=false; // エラーの場合はフラグをリセット
+            enableInputs(); // 入力を再有効化
             return;
         }
     }
@@ -1724,7 +1812,7 @@ try{
 }catch(e){}
 
 document.addEventListener('keydown',function(e){
-    if(e.key==='Enter'&&$("game").style.display==="block"){
+    if(e.key==='Enter'&&$("game").style.display==="block"&&!state.answerSubmitted){
         if($("comparisonInput").style.display==="block"){
             submitComparison();
         }else if($("formulaSection").style.display==="flex"){
