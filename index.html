@@ -149,8 +149,6 @@ select:focus{border-color:#2196f3;outline:none;box-shadow:0 0 5px rgba(33,150,24
 .formula-builder{display:flex;align-items:center;gap:10px;margin:10px 0;flex-wrap:wrap;justify-content:center}
 .formula-builder input{width:60px;text-align:center}
 .formula-builder select{width:80px;text-align:center}
-.formula-preview{background:#f5f5f5;padding:10px;border-radius:5px;margin:10px 0;font-size:18px;min-height:30px}
-
 /* 修正された式作成用の分数入力スタイル */
 .formula-fraction{display:inline-flex;flex-direction:column;align-items:center;margin:0 5px;vertical-align:middle}
 .formula-fraction input{width:50px;text-align:center;margin:2px 0;padding:8px;font-size:16px}
@@ -279,7 +277,6 @@ select:focus{border-color:#2196f3;outline:none;box-shadow:0 0 5px rgba(33,150,24
 <input type="number" id="f2d" placeholder="分母" min="1">
 </div>
 </div>
-<div class="formula-preview" id="formulaPreview">式がここに表示されます</div>
 </div>
 <button class="submit-btn" onclick="submitFormula()">式で答える</button>
 </div>
@@ -386,12 +383,12 @@ select:focus{border-color:#2196f3;outline:none;box-shadow:0 0 5px rgba(33,150,24
 <div class="info">
 <h2 style="color:#2196f3;margin:0 0 15px 0">📝 手書き計算スペース</h2>
 <p style="margin:0 0 15px 0;color:#666">マウスや指で自由に計算式や図を書けます</p>
+<div style="margin-bottom:15px;text-align:center">
+<button onclick="clearDrawCanvas()" style="background:#ff9800;color:white;border:none;padding:10px 20px;border-radius:6px;margin:5px;cursor:pointer;font-size:14px">🗑️ クリア</button>
+</div>
 </div>
 <div style="background:white;border-radius:10px;padding:20px;border:2px solid #2196f3">
 <canvas id="drawArea" width="800" height="500" style="border:2px solid #2196f3;border-radius:8px;background:#fff;touch-action:none;display:block;margin:0 auto;cursor:crosshair"></canvas>
-<div style="margin-top:15px;text-align:center">
-<button onclick="clearDrawCanvas()" style="background:#ff9800;color:white;border:none;padding:10px 20px;border-radius:6px;margin:5px;cursor:pointer;font-size:14px">🗑️ クリア</button>
-</div>
 <div style="font-size:14px;color:#666;margin-top:15px;text-align:center;background:#f8f9fa;padding:10px;border-radius:6px">
 💡 ヒント: 筆算や図を描いて問題を解いてみましょう！小数の位取りや計算過程を書くと理解が深まります。
 </div>
@@ -682,38 +679,11 @@ window.addEventListener('load',()=>{
         $("totalPoints").textContent=totalPoints;
     }
     
-    // 式の入力フィールドの変更を監視
-    ['f1n', 'f1d', 'operator', 'f2n', 'f2d'].forEach(id => {
-        $(id).addEventListener('input', updateFormulaPreview);
-        $(id).addEventListener('change', updateFormulaPreview);
-    });
-    
     // 手書きスペース初期化
     setTimeout(function() {
         initDrawingSpace();
     }, 1000);
 });
-
-function updateFormulaPreview() {
-    const f1n = $("f1n").value;
-    const f1d = $("f1d").value;
-    const operator = $("operator").value;
-    const f2n = $("f2n").value;
-    const f2d = $("f2d").value;
-    
-    let preview = "";
-    if (f1n && f1d) {
-        preview += `${f1n}/${f1d}`;
-    }
-    if (operator) {
-        preview += ` ${operator} `;
-    }
-    if (f2n && f2d) {
-        preview += `${f2n}/${f2d}`;
-    }
-    
-    $("formulaPreview").textContent = preview || "式がここに表示されます";
-}
 
 const gcd=(a,b)=>b?gcd(b,a%b):a;
 const R=(min,max)=>Math.floor(Math.random()*(max-min+1))+min;
@@ -794,7 +764,6 @@ function stopTimer(){
 function getElapsedTime(){
     return state.startTime?Math.floor((Date.now()-state.startTime)/1000):0;
 }
-
 
 function generateHiddenProblem(){
     const type=R(1,5);
@@ -1303,7 +1272,6 @@ function newProblem(){
         $("answerSections").style.display="none";
         $("comparisonInput").style.display="none";
         $("formulaSection").style.display="flex";
-        updateFormulaPreview();
     }else{
         $("answerSections").style.display="flex";
         $("formulaSection").style.display="none";
