@@ -149,7 +149,6 @@ select:focus{border-color:#2196f3;outline:none;box-shadow:0 0 5px rgba(33,150,24
 .formula-builder{display:flex;align-items:center;gap:10px;margin:10px 0;flex-wrap:wrap;justify-content:center}
 .formula-builder input{width:60px;text-align:center}
 .formula-builder select{width:80px;text-align:center}
-/* 修正された式作成用の分数入力スタイル */
 .formula-fraction{display:inline-flex;flex-direction:column;align-items:center;margin:0 5px;vertical-align:middle}
 .formula-fraction input{width:50px;text-align:center;margin:2px 0;padding:8px;font-size:16px}
 .formula-fraction-line{width:60px;height:2px;background:#333;margin:2px 0}
@@ -285,7 +284,6 @@ select:focus{border-color:#2196f3;outline:none;box-shadow:0 0 5px rgba(33,150,24
 <div id="comparisonInput" style="display:none" class="comparison-options">
 <button class="comparison-btn" onclick="selectComparison(this, 'left')">左がわ</button>
 <button class="comparison-btn" onclick="selectComparison(this, 'right')">右がわ</button>
-<button class="comparison-btn" onclick="selectComparison(this, 'equal')">同じ</button>
 <br>
 <button class="submit-btn" onclick="submitComparison()" style="margin-top:15px">答える</button>
 </div>
@@ -862,7 +860,7 @@ function generateProblem(lv){
             }
         }
         case 4:{
-            // 大小比較（修正版：答えがランダムになるように）
+            // 大小比較（修正版：「同じ」選択肢を削除）
             const type=R(1,3);
             switch(type){
                 case 1:{
@@ -1034,22 +1032,22 @@ function generateProblem(lv){
                 }
             }
         }
-        case 10:{
-            // もとにする大きさを求める問題
+                case 10:{
+            // もとにする大きさを求める問題（修正版：分子を1に固定）
             const type=R(1,2);
             switch(type){
                 case 1:{
-                    // 本と雑誌の問題
+                    // 本と雑誌の問題（分子を1に固定）
                     const price=R(600,1200);
-                    const[n,d]=randFrac(6,10);
-                    return{q:`${price}円の本を買いました。この本の値段は雑誌の値段の${frac(n,d)}倍です。雑誌の値段を求めましょう。`,n:price*d,d:n,u:"円",type:'fraction',mixed:false};
+                    const d=R(2,10); // 分母のみランダム
+                    return{q:`${price}円の本を買いました。この本の値段は雑誌の値段の${frac(1,d)}倍です。雑誌の値段を求めましょう。`,n:price*d,d:1,u:"円",type:'fraction',mixed:false};
                 }
                 case 2:{
-                    // 一般的なもとの量問題
+                    // 一般的なもとの量問題（分子を1に固定）
                     const amount=R(200,800);
-                    const[n,d]=randFrac(6,10);
+                    const d=R(2,10); // 分母のみランダム
                     const item=["ペン","ノート","消しゴム"][R(0,2)];
-                    return{q:`${amount}円の${item}を買いました。この${item}の値段は別の商品の${frac(n,d)}倍です。別の商品の値段を求めましょう。`,n:amount*d,d:n,u:"円",type:'fraction',mixed:false};
+                    return{q:`${amount}円の${item}を買いました。この${item}の値段は別の商品の${frac(1,d)}倍です。別の商品の値段を求めましょう。`,n:amount*d,d:1,u:"円",type:'fraction',mixed:false};
                 }
             }
         }
