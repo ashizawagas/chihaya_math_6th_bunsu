@@ -159,6 +159,95 @@ select:disabled{background:#f5f5f5;color:#999;cursor:not-allowed}
 .formula-fraction-line{width:60px;height:2px;background:#333;margin:2px 0}
 .formula-operator{display:inline-flex;align-items:center;margin:0 10px;vertical-align:middle}
 .formula-operator select{padding:8px;font-size:16px}
+
+/* ボーナスゲーム専用CSS */
+#bonusGame {
+    background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+    padding: 40px;
+    border-radius: 20px;
+    margin: 20px;
+    color: white;
+}
+
+#shootingGameContainer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.9);
+    z-index: 9999;
+}
+
+#shootingGameContainer .shooting-area {
+    position: relative;
+    width: 100%;
+    height: 400px;
+    background: linear-gradient(to bottom, #87ceeb, #98fb98);
+    border-radius: 15px;
+    overflow: hidden;
+    margin: 20px 0;
+}
+
+#shootingGameContainer .falling-fraction {
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(45deg, #feca57, #ff9ff3);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: white;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    font-size: 0.8em;
+}
+
+#shootingGameContainer .bullet {
+    position: absolute;
+    width: 8px;
+    height: 15px;
+    background: #ff6b6b;
+    border-radius: 4px;
+}
+
+#shootingGameContainer .player {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 40px;
+    background: #ff6b6b;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: left 0.1s ease;
+}
+
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+@media (max-width: 768px) {
+    .answer-sections {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .answer-section {
+        min-width: auto;
+        width: 100%;
+    }
+    
+    #shootingGameContainer iframe {
+        width: 100vw;
+        height: 100vh;
+    }
+}
 </style>
 </head>
 <body>
@@ -170,8 +259,8 @@ select:disabled{background:#f5f5f5;color:#999;cursor:not-allowed}
 <div id="pointsDisplay" class="points-display" style="display:none">💰 総ポイント: <span id="totalPoints">0</span>P</div>
 <div class="info">
 <div class="mode-info select"><h3>🎮 選べるモード</h3><p>• 好きなレベルを選んで練習<br>• 10問連続正解でレベルクリア<br>• 正解でポイント獲得（少なめ）</p></div>
-<div class="mode-info practice"><h3>📚 練習モード</h3><p>• 各レベルで5問連続正解で次のレベルへ<br>• 間違えたらそのレベルのカウントが0に戻る<br>• レベルアップでボーナスポイント（中程度）</p></div>
-<div class="mode-info summary"><h3>🎯 まとめモード</h3><p>• 全10レベル×各5問＝計50問に挑戦<br>• 一問でも間違えるとゲームオーバー<br>• クリア時間に応じて大量ポイント獲得<br>• <strong>クリアで隠しステージ解放！</strong></p></div>
+<div class="mode-info practice"><h3>📚 練習モード</h3><p>• 各レベルで5問連続正解で次のレベルへ<br>• 間違えたらそのレベルのカウントが0に戻る<br>• レベルアップでボーナスゲーム</p></div>
+<div class="mode-info summary"><h3>🎯 まとめモード</h3><p>• 各レベルで5問連続正解で次のレベルへ<br>• <strong>一問でも間違えるとゲームオーバー</strong><br>• クリア時間に応じて大量ポイント獲得<br>• <strong>5問ごとにボーナスゲーム！</strong><br>• <strong>全10レベルクリアで隠しステージ解放！</strong></p></div>
 <div id="hiddenModeInfo" class="mode-info hidden" style="display:none"><h3>👑 隠しステージ</h3><p>• 超高難度の分数の割り算問題に挑戦<br>• 全10問クリアで「分数の割り算マスター」の称号獲得<br>• 派手なアニメーションで祝福！</p></div>
 </div>
 <button class="mode-btn select" onclick="showLevelSelect()">🎮 選べるモード</button>
@@ -198,6 +287,27 @@ select:disabled{background:#f5f5f5;color:#999;cursor:not-allowed}
 <div class="level-btn" onclick="selectLevel(10)"><h4>👑 レベル10</h4><p>もとにする大きさを求める</p></div>
 </div>
 <button onclick="backToStart()">トップ画面にもどる</button>
+</div>
+
+<!-- ボーナスゲーム画面 -->
+<div id="bonusGame" style="display:none">
+    <div style="background:linear-gradient(45deg,#ff6b6b,#4ecdc4);padding:40px;border-radius:20px;margin:20px">
+        <h1>🎯 ボーナスゲーム！</h1>
+        <div class="monster" style="font-size:120px">🎮</div>
+        <h2>レベル<span id="bonusLevel"></span>クリア記念！</h2>
+        <div class="info">
+            <p>分数シューティング99で遊んでボーナスポイントを獲得しよう！</p>
+            <div id="bonusGamePoints" class="points-earned">🎉 ボーナスポイント: <span id="bonusPointsValue">0</span>P</div>
+        </div>
+        <button class="mode-btn" onclick="startBonusGame()">🚀 ボーナスゲーム開始</button>
+        <button class="mode-btn" onclick="skipBonusGame()">⏭️ スキップして次のレベルへ</button>
+    </div>
+</div>
+
+<!-- 分数シューティング99の統合 -->
+<div id="shootingGameContainer" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:9999;">
+    <div id="embeddedShootingGame" style="width:100%;height:100%;"></div>
+    <button onclick="closeBonusGame()" style="position:absolute;top:20px;right:20px;background:#ff6b6b;color:white;border:none;padding:10px 20px;border-radius:10px;font-size:16px;cursor:pointer;">ゲーム終了</button>
 </div>
 
 <div id="game" style="display:none">
@@ -317,8 +427,8 @@ select:disabled{background:#f5f5f5;color:#999;cursor:not-allowed}
 <div class="monster" style="font-size:120px">😵</div>
 <h2>残念！</h2>
 <div class="info">
-<p>到達レベル: <span id="finalLv"></span>/10</p>
-<p>正解数: <span id="finalScore1"></span>問</p>
+<p id="summaryGameoverInfo" style="display:none">正解数: <span id="finalScore1"></span>問 / 挑戦レベル: <span id="finalLv"></span></p>
+<p id="normalGameoverInfo">到達レベル: <span id="finalLv"></span>/10 | 正解数: <span id="finalScore1"></span>問</p>
 <p id="finalTime" style="display:none">経過時間: <span id="finalTimeValue"></span></p>
 <div id="gameoverPoints" class="points-earned" style="display:none">🎉 獲得ポイント: <span id="gameoverPointsValue">0</span>P</div>
 </div>
@@ -402,6 +512,11 @@ select:disabled{background:#f5f5f5;color:#999;cursor:not-allowed}
 // Firebase関連の関数
 async function savePlayerScore(playerId, points) {
     try {
+        if (!window.db || !window.firestore) {
+            console.log('Firebase未初期化のため、ローカル保存のみ実行');
+            return false;
+        }
+        
         const playerRef = window.firestore.doc(window.db, 'players', playerId);
         
         const docSnap = await window.firestore.getDoc(playerRef);
@@ -548,10 +663,32 @@ async function displayFirebaseRanking() {
 }
 
 const $=id=>document.getElementById(id)||{style:{},textContent:'',innerHTML:'',value:'',classList:{add:()=>{},remove:()=>{}},appendChild:()=>{},remove:()=>{},focus:()=>{},disabled:false};
-let state={score:0,level:1,prob:null,unit:"",mode:"",lvCount:0,totalQ:0,qNum:0,completed:new Set(),selectedComparison:null,selectQCount:0,startTime:null,timerInterval:null,hiddenQ:0,sessionPoints:0,selectCorrectCount:0,clearedLevels:new Set(),answerSubmitted:false};
+let state={score:0,level:1,prob:null,unit:"",mode:"",lvCount:0,totalQ:0,qNum:0,completed:new Set(),selectedComparison:null,selectQCount:0,startTime:null,timerInterval:null,hiddenQ:0,sessionPoints:0,selectCorrectCount:0,clearedLevels:new Set(),answerSubmitted:false,timerPaused:false,pausedTime:null,processingLevelUp:false,processingBonus:false};
 const monsters=["➗","🔢","🔲","⚖️","📝","🔀","⏰","📊","✖️","👑"];
 const lvNames=["分数÷分数","分数÷分数×分数","整数÷分数、帯分数÷分数","大小比較","式を作る問題","小数・整数・分数の混合計算","分数で表す（時間・長さ）","分数を使った文章題","分数の倍","もとにする大きさを求める"];
 let totalPoints=0,hiddenStageAvailable=false,playerId='';
+
+// ボーナスゲーム関連の変数
+let bonusGameActive = false;
+let bonusGameScore = 0;
+let currentBonusLevel = 0;
+let bonusPointsAdded = false;
+
+// 分数シューティング99の統合変数（修正版）
+let shootingGameState = {
+    score: 0,
+    timeRemaining: 30,
+    playerPosition: 50,
+    gameInterval: null,
+    gameTimer: null,
+    fractionSpawnInterval: null,
+    keys: {},
+    reducibleFractionsHit: 0,
+    totalFractionsHit: 0,
+    isActive: false,
+    fallingFractions: [],
+    bullets: []
+};
 
 function generatePlayerId(){
     const now=new Date();
@@ -697,7 +834,7 @@ function simplify(n,d){
     return[n/g,d/g];
 }
 
-// 約分しやすい分数を生成する関数（修正版）
+// 約分しやすい分数を生成する関数
 function randFracReduced(maxN=12,maxD=12){
     const reducibleNums = [
         [2,4],[3,6],[4,8],[6,12],[2,6],[3,9],[4,12],[6,9],
@@ -732,8 +869,9 @@ function calculateClearPoints(clearTime){
 
 function calculateLevelPoints(level,mode){
     const basePoints = level*50;
-    if(mode==='practice')return Math.floor(basePoints*0.3);
+    if(mode==='practice')return Math.floor(basePoints*3); // 練習モードは選べるモードの3倍
     else if(mode==='select')return Math.floor(basePoints*0.5);
+    else if(mode==='summary')return Math.floor(basePoints*5); // まとめモードは選べるモードの5倍
     else return basePoints;
 }
 
@@ -791,40 +929,452 @@ function getElapsedTime(){
     return state.startTime?Math.floor((Date.now()-state.startTime)/1000):0;
 }
 
+// ボーナスゲーム関連の関数（修正版）
+function showBonusGame(level) {
+    if (state.processingBonus) return; // 重複実行防止
+    state.processingBonus = true;
+    
+    currentBonusLevel = level;
+    bonusPointsAdded = false;
+    
+    $("game").style.display = "none";
+    $("bonusGame").style.display = "block";
+    $("bonusLevel").textContent = level;
+    $("bonusPointsValue").textContent = "0";
+    
+    console.log(`ボーナスゲーム表示: レベル${level}`);
+}
+
+function startBonusGame() {
+    if (shootingGameState.isActive) return; // 既に実行中の場合は無視
+    
+    $("bonusGame").style.display = "none";
+    $("shootingGameContainer").style.display = "block";
+    
+    // 分数シューティング99を初期化して開始
+    initShootingGame();
+    console.log("ボーナスゲーム開始");
+}
+
+function skipBonusGame() {
+    state.processingBonus = false;
+    $("bonusGame").style.display = "none";
+    
+    if (state.mode === 'practice') {
+        if (currentBonusLevel < 10) {
+            state.level = currentBonusLevel + 1;
+            state.lvCount = 0;
+            $("game").style.display = "block";
+            updateLevelIndicator();
+            updateProgressBar();
+            newProblem();
+        } else {
+            backToStart();
+        }
+    } else if (state.mode === 'summary') {
+        if (state.totalQ < 50) {
+            $("game").style.display = "block";
+            updateLevelIndicator();
+            updateProgressBar();
+            newProblem();
+        }
+    }
+    
+    console.log("ボーナスゲームスキップ");
+}
+
+function closeBonusGame() {
+    if (shootingGameState.isActive) {
+        endShootingGame();
+    }
+    
+    $("shootingGameContainer").style.display = "none";
+    
+    // ボーナスポイントが未追加の場合は追加
+    if (!bonusPointsAdded) {
+        const bonusPoints = Math.max(Math.floor(shootingGameState.score), 10);
+        addBonusPoints(bonusPoints);
+    }
+    
+    // 次のレベルまたは画面に進む
+    proceedAfterBonus();
+    
+    console.log("ボーナスゲーム終了");
+}
+
+async function addBonusPoints(points) {
+    if (bonusPointsAdded) return; // 重複防止
+    bonusPointsAdded = true;
+    
+    $("bonusPointsValue").textContent = points;
+    await addPoints(points);
+    
+    console.log(`ボーナスポイント追加: ${points}P`);
+}
+
+function proceedAfterBonus() {
+    state.processingBonus = false;
+    
+    if (state.mode === 'practice') {
+        if (currentBonusLevel < 10) {
+            state.level = currentBonusLevel + 1;
+            state.lvCount = 0;
+            $("game").style.display = "block";
+            updateLevelIndicator();
+            updateProgressBar();
+            newProblem();
+        } else {
+            alert('練習モード全レベル完了！おめでとうございます！');
+            backToStart();
+        }
+    } else if (state.mode === 'summary') {
+        if (state.totalQ < 50) {
+            $("game").style.display = "block";
+            updateLevelIndicator();
+            updateProgressBar();
+            newProblem();
+        }
+    }
+}
+
+// 分数シューティング99の統合実装（修正版）
+function initShootingGame() {
+    if (shootingGameState.isActive) return;
+    
+    shootingGameState = {
+        score: 0,
+        timeRemaining: 30,
+        playerPosition: 50,
+        gameInterval: null,
+        gameTimer: null,
+        fractionSpawnInterval: null,
+        keys: {},
+        reducibleFractionsHit: 0,
+        totalFractionsHit: 0,
+        isActive: true,
+        fallingFractions: [],
+        bullets: []
+    };
+    
+    const gameContainer = $("embeddedShootingGame");
+    gameContainer.innerHTML = `
+        <div style="text-align: center; color: white; padding: 20px;">
+            <h2>🎯 分数シューティング99</h2>
+            <div style="display: flex; justify-content: space-between; margin: 20px 0;">
+                <div>スコア: <span id="shootingScore">0</span></div>
+                <div>時間: <span id="shootingTime">30</span>秒</div>
+                <div>約分可能: <span id="reducibleCount">0</span>/<span id="totalCount">0</span></div>
+            </div>
+            <div id="shootingArea" style="position: relative; width: 100%; height: 400px; background: linear-gradient(to bottom, #87ceeb, #98fb98); border-radius: 15px; overflow: hidden; margin: 20px 0;">
+                <div id="player" style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); width: 40px; height: 40px; background: #ff6b6b; border-radius: 50%; cursor: pointer;"></div>
+            </div>
+            <div style="color: white; margin: 10px 0;">
+                <p>🎮 操作方法: マウス移動で左右移動、クリックで弾発射</p>
+                <p>🎯 約分できる分数に当たると10ポイント、約分できない分数に当たったらマイナス5ポイント</p>
+            </div>
+        </div>
+    `;
+    
+    setupShootingGameEvents();
+    startShootingGameLoop();
+    
+    console.log("シューティングゲーム初期化完了");
+}
+
+function setupShootingGameEvents() {
+    const gameArea = document.getElementById('shootingArea');
+    const player = document.getElementById('player');
+    
+    if (!gameArea || !player) return;
+    
+    // マウス移動でプレイヤー移動
+    gameArea.addEventListener('mousemove', (e) => {
+        if (!shootingGameState.isActive) return;
+        
+        const rect = gameArea.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
+        
+        shootingGameState.playerPosition = percentage;
+        player.style.left = percentage + '%';
+    });
+    
+    // クリックで弾発射
+    gameArea.addEventListener('click', (e) => {
+        if (!shootingGameState.isActive) return;
+        shootBullet();
+    });
+    
+    // キーボード操作
+    document.addEventListener('keydown', (e) => {
+        if (!shootingGameState.isActive) return;
+        shootingGameState.keys[e.key] = true;
+    });
+    
+    document.addEventListener('keyup', (e) => {
+        if (!shootingGameState.isActive) return;
+        shootingGameState.keys[e.key] = false;
+    });
+}
+
+function startShootingGameLoop() {
+    if (!shootingGameState.isActive) return;
+    
+    // ゲームタイマー
+    shootingGameState.gameTimer = setInterval(() => {
+        shootingGameState.timeRemaining--;
+        document.getElementById('shootingTime').textContent = shootingGameState.timeRemaining;
+        
+        if (shootingGameState.timeRemaining <= 0) {
+            endShootingGame();
+        }
+    }, 1000);
+    
+    // ゲームループ
+    shootingGameState.gameInterval = setInterval(() => {
+        updateShootingGame();
+    }, 50);
+    
+    // 分数生成
+    shootingGameState.fractionSpawnInterval = setInterval(() => {
+        if (shootingGameState.isActive) {
+            createFallingFraction();
+        }
+    }, 500);
+}
+
+function updateShootingGame() {
+    if (!shootingGameState.isActive) return;
+    
+    // キーボード移動
+    if (shootingGameState.keys['ArrowLeft'] || shootingGameState.keys['a']) {
+        shootingGameState.playerPosition = Math.max(0, shootingGameState.playerPosition - 2);
+    }
+    if (shootingGameState.keys['ArrowRight'] || shootingGameState.keys['d']) {
+        shootingGameState.playerPosition = Math.min(100, shootingGameState.playerPosition + 2);
+    }
+    if (shootingGameState.keys[' ']) {
+        shootBullet();
+        shootingGameState.keys[' '] = false;
+    }
+    
+    // プレイヤー位置更新
+    const player = document.getElementById('player');
+    if (player) {
+        player.style.left = shootingGameState.playerPosition + '%';
+    }
+    
+    // 分数の移動
+    shootingGameState.fallingFractions.forEach((fraction, index) => {
+        fraction.y += 4;
+        fraction.element.style.top = fraction.y + 'px';
+        
+        if (fraction.y > 400) {
+            fraction.element.remove();
+            shootingGameState.fallingFractions.splice(index, 1);
+        }
+    });
+    
+    // 弾の移動
+    shootingGameState.bullets.forEach((bullet, index) => {
+        bullet.y -= 5;
+        bullet.element.style.top = bullet.y + 'px';
+        
+        if (bullet.y < 0) {
+            bullet.element.remove();
+            shootingGameState.bullets.splice(index, 1);
+        }
+    });
+    
+    // 当たり判定
+    checkCollisions();
+}
+
+function createFallingFraction() {
+    const gameArea = document.getElementById('shootingArea');
+    if (!gameArea || !shootingGameState.isActive) return;
+    
+    let numerator, denominator, isReducible;
+    
+    if (Math.random() < 0.5) {
+        const pair = randFracReduced(12, 15);
+        numerator = pair[0];
+        denominator = pair[1];
+        isReducible = true;
+    } else {
+        do {
+            numerator = R(1, 12);
+            denominator = R(2, 15);
+        } while (gcd(numerator, denominator) > 1);
+        isReducible = false;
+    }
+    
+    const fractionElement = document.createElement('div');
+    fractionElement.className = 'falling-fraction';
+    fractionElement.style.left = Math.random() * 90 + '%';
+    fractionElement.style.top = '0px';
+    fractionElement.innerHTML = `
+        <div style="font-size: 0.7em;">${numerator}</div>
+        <div style="border-top: 1px solid white; margin: 2px 0;"></div>
+        <div style="font-size: 0.7em;">${denominator}</div>
+    `;
+    
+    fractionElement.style.background = 'linear-gradient(45deg, #feca57, #ff9ff3)';
+    fractionElement.style.border = '2px solid white';
+    
+    gameArea.appendChild(fractionElement);
+    
+    shootingGameState.fallingFractions.push({
+        element: fractionElement,
+        x: parseFloat(fractionElement.style.left),
+        y: 0,
+        numerator: numerator,
+        denominator: denominator,
+        isReducible: isReducible
+    });
+}
+
+function shootBullet() {
+    const gameArea = document.getElementById('shootingArea');
+    if (!gameArea || !shootingGameState.isActive) return;
+    
+    const bulletElement = document.createElement('div');
+    bulletElement.className = 'bullet';
+    bulletElement.style.left = shootingGameState.playerPosition + '%';
+    bulletElement.style.bottom = '50px';
+    bulletElement.style.position = 'absolute';
+    bulletElement.style.width = '8px';
+    bulletElement.style.height = '15px';
+    bulletElement.style.background = '#ff6b6b';
+    bulletElement.style.borderRadius = '4px';
+    
+    gameArea.appendChild(bulletElement);
+    
+    shootingGameState.bullets.push({
+        element: bulletElement,
+        x: shootingGameState.playerPosition,
+        y: 350
+    });
+}
+
+function checkCollisions() {
+    shootingGameState.bullets.forEach((bullet, bulletIndex) => {
+        shootingGameState.fallingFractions.forEach((fraction, fractionIndex) => {
+            const bulletRect = bullet.element.getBoundingClientRect();
+            const fractionRect = fraction.element.getBoundingClientRect();
+            
+            if (bulletRect.left < fractionRect.right &&
+                bulletRect.right > fractionRect.left &&
+                bulletRect.top < fractionRect.bottom &&
+                bulletRect.bottom > fractionRect.top) {
+                
+                hitFraction(fraction, fractionIndex);
+                
+                bullet.element.remove();
+                fraction.element.remove();
+                shootingGameState.bullets.splice(bulletIndex, 1);
+                shootingGameState.fallingFractions.splice(fractionIndex, 1);
+            }
+        });
+    });
+}
+
+function hitFraction(fraction, index) {
+    shootingGameState.totalFractionsHit++;
+    
+    let points = 0;
+    if (fraction.isReducible) {
+        shootingGameState.reducibleFractionsHit++;
+        points = 10;
+        showHitEffect(fraction.element, '+10', '#00ff00');
+    } else {
+        points = -5;
+        showHitEffect(fraction.element, '-5', '#ff0000');
+    }
+    
+    shootingGameState.score += points;
+    
+    document.getElementById('shootingScore').textContent = shootingGameState.score;
+    document.getElementById('reducibleCount').textContent = shootingGameState.reducibleFractionsHit;
+    document.getElementById('totalCount').textContent = shootingGameState.totalFractionsHit;
+}
+
+function showHitEffect(element, text, color) {
+    const effect = document.createElement('div');
+    effect.style.position = 'absolute';
+    effect.style.left = element.style.left;
+    effect.style.top = element.style.top;
+    effect.style.color = color;
+    effect.style.fontSize = '20px';
+    effect.style.fontWeight = 'bold';
+    effect.style.pointerEvents = 'none';
+    effect.style.zIndex = '1000';
+    effect.textContent = text;
+    effect.style.animation = 'fadeOut 1s forwards';
+    
+    document.getElementById('shootingArea').appendChild(effect);
+    setTimeout(() => effect.remove(), 1000);
+}
+
+function endShootingGame() {
+    if (!shootingGameState.isActive) return;
+    
+    shootingGameState.isActive = false;
+    
+    if (shootingGameState.gameTimer) {
+        clearInterval(shootingGameState.gameTimer);
+        shootingGameState.gameTimer = null;
+    }
+    
+    if (shootingGameState.gameInterval) {
+        clearInterval(shootingGameState.gameInterval);
+        shootingGameState.gameInterval = null;
+    }
+    
+    if (shootingGameState.fractionSpawnInterval) {
+        clearInterval(shootingGameState.fractionSpawnInterval);
+        shootingGameState.fractionSpawnInterval = null;
+    }
+    
+    const bonusPoints = Math.max(Math.floor(shootingGameState.score), 10);
+    addBonusPoints(bonusPoints);
+    
+    setTimeout(() => {
+        alert(`ゲーム終了！\nスコア: ${shootingGameState.score}\n約分可能な分数: ${shootingGameState.reducibleFractionsHit}/${shootingGameState.totalFractionsHit}\nボーナスポイント: ${bonusPoints}P`);
+        closeBonusGame();
+    }, 1000);
+    
+    console.log("シューティングゲーム終了");
+}
 
 function generateHiddenProblem(){
     const type=R(1,5);
     switch(type){
         case 1:{
-            // 複雑な分数の割り算（約分しやすい数値を使用）
             const[n1,d1]=randFracReduced(15,20);
             const[n2,d2]=randFracReduced(15,20);
             const[n3,d3]=randFracReduced(15,20);
             return{q:`${frac(n1,d1)} ÷ ${frac(n2,d2)} ÷ ${frac(n3,d3)} =`,n:n1*d2*d3,d:d1*n2*n3,type:'fraction',mixed:false};
         }
         case 2:{
-            // 帯分数を含む複雑な計算（約分しやすい数値を使用）
             const w1=R(2,4),d1=R(6,12),n1=R(2,d1-1);
             const[n2,d2]=randFracReduced(12,15);
             const i1=w1*d1+n1;
             return{q:`${mixedFrac(w1,n1,d1)} ÷ ${frac(n2,d2)} × ${frac(n2,d2)} =`,n:i1,d:d1,type:'fraction',mixed:true};
         }
         case 3:{
-            // 文章題（約分しやすい数値を使用）
             const total=R(120,240);
             const[n1,d1]=randFracReduced(8,15);
             const[n2,d2]=randFracReduced(8,15);
             return{q:`${total}個のお菓子を${frac(n1,d1)}ずつ分けると何人に分けられますか？さらにその人数を${frac(n2,d2)}で割ると何人になりますか？`,n:total*d1*d2,d:n1*n2,u:"人",type:'fraction',mixed:false};
         }
         case 4:{
-            // 時間の複雑な計算（約分しやすい数値を使用）
             const hours=R(2,6);
             const[n1,d1]=randFracReduced(8,12);
             const[n2,d2]=randFracReduced(6,10);
             return{q:`${hours}時間の${frac(n1,d1)}を${frac(n2,d2)}で割ると何分ですか？`,n:hours*60*n1*d2,d:d1*n2,u:"分",type:'fraction',mixed:false};
         }
         case 5:{
-            // 比較問題（約分しやすい数値を使用）
             const[n1,d1]=randFracReduced(20,30);
             const[n2,d2]=randFracReduced(20,30);
             const[n3,d3]=randFracReduced(20,30);
@@ -835,31 +1385,18 @@ function generateHiddenProblem(){
     }
 }
 
-// 約分しやすい分数を生成する関数（修正版）
-function randFracReduced(maxN=12,maxD=12){
-    const reducibleNums = [
-        [2,4],[3,6],[4,8],[6,12],[2,6],[3,9],[4,12],[6,9],
-        [8,12],[2,8],[3,12],[4,6],[6,8],[9,12],[2,10],[4,10],
-        [6,10],[8,10],[2,12],[3,15],[4,16],[5,10],[5,15],[6,15],
-        [8,16],[9,15],[10,15],[12,16],[12,18],[15,18]
-    ];
-    
-    // 約分可能な分数から選択
-    const pair = reducibleNums[R(0,reducibleNums.length-1)];
-    return [pair[0], pair[1]];
-}
-
 function generateProblem(lv){
     if(state.mode==='hidden')return generateHiddenProblem();
-    switch(lv){
+    
+    const targetLevel = (state.mode === 'summary') ? state.level : lv;
+    
+    switch(targetLevel){
         case 1:{
-            // 分数÷分数（約分しやすい数値を使用）
             const[n1,d1]=randFracReduced(8,12);
             const[n2,d2]=randFracReduced(8,12);
             return{q:`${frac(n1,d1)} ÷ ${frac(n2,d2)} =`,n:n1*d2,d:d1*n2,type:'fraction',mixed:false};
         }
         case 2:{
-            // 分数÷分数×分数 または 分数×分数÷分数（約分しやすい数値を使用）
             const[n1,d1]=randFracReduced(6,10);
             const[n2,d2]=randFracReduced(6,10);
             const[n3,d3]=randFracReduced(6,10);
@@ -870,31 +1407,26 @@ function generateProblem(lv){
             }
         }
         case 3:{
-            // 整数÷分数、帯分数÷分数など（約分しやすい数値を使用）
             const type=R(1,4);
             switch(type){
                 case 1:{
-                    // 整数÷分数
                     const i=R(2,8);
                     const[n,d]=randFracReduced(6,10);
                     return{q:`${i} ÷ ${frac(n,d)} =`,n:i*d,d:n,type:'fraction',mixed:true};
                 }
                 case 2:{
-                    // 帯分数÷真分数
                     const w=R(1,3),d1=R(3,6),n1=R(1,d1-1);
                     const[n2,d2]=randFracReduced(6,8);
                     const i1=w*d1+n1;
                     return{q:`${mixedFrac(w,n1,d1)} ÷ ${frac(n2,d2)} =`,n:i1*d2,d:d1*n2,type:'fraction',mixed:true};
                 }
                 case 3:{
-                    // 真分数÷帯分数
                     const[n1,d1]=randFracReduced(6,8);
                     const w=R(1,2),d2=R(3,5),n2=R(1,d2-1);
                     const i2=w*d2+n2;
                     return{q:`${frac(n1,d1)} ÷ ${mixedFrac(w,n2,d2)} =`,n:n1*d2,d:d1*i2,type:'fraction',mixed:false};
                 }
                 case 4:{
-                    // 帯分数÷帯分数
                     const w1=R(1,2),d1=R(3,5),n1=R(1,d1-1);
                     const w2=R(1,2),d2=R(3,5),n2=R(1,d2-1);
                     const i1=w1*d1+n1,i2=w2*d2+n2;
@@ -903,11 +1435,9 @@ function generateProblem(lv){
             }
         }
         case 4:{
-            // 大小比較（修正版：「同じ」選択肢を削除）
             const type=R(1,3);
             switch(type){
                 case 1:{
-                    // 整数÷分数と整数の比較
                     const i=R(3,6);
                     const[n,d]=randFracReduced(6,10);
                     const leftValue=i*d/n;
@@ -916,7 +1446,6 @@ function generateProblem(lv){
                     return{q:`${i} ÷ ${frac(n,d)} と ${i} を比べて、どちらが${questionType}か答えてください`,left:leftValue,right:rightValue,type:'comparison',questionType:questionType};
                 }
                 case 2:{
-                    // 分数÷分数と分数の比較
                     const[n1,d1]=randFracReduced(6,10);
                     const[n2,d2]=randFracReduced(6,10);
                     const leftValue=(n1*d2)/(d1*n2);
@@ -925,7 +1454,6 @@ function generateProblem(lv){
                     return{q:`${frac(n1,d1)} ÷ ${frac(n2,d2)} と ${frac(n1,d1)} を比べて、どちらが${questionType}か答えてください`,left:leftValue,right:rightValue,type:'comparison',questionType:questionType};
                 }
                 case 3:{
-                    // 整数÷分数と整数の比較（別パターン）
                     const i=R(4,8);
                     const[n,d]=randFracReduced(8,12);
                     const leftValue=i*d/n;
@@ -936,59 +1464,48 @@ function generateProblem(lv){
             }
         }
         case 5:{
-            // 式を作る問題（修正版：正しい答えの設定）
             const type=R(1,2);
             switch(type){
                 case 1:{
-                    // ホース問題（修正版：正しい答えの設定）
                     const[n1,d1]=randFracReduced(6,10);
                     const[n2,d2]=randFracReduced(6,10);
                     const unit1=R(1,2)===1?"m":"L";
                     const unit2="kg";
                     const question=R(1,2)===1?"１"+unit1+"の重さを求めましょう":"１"+unit2+"の長さを求めましょう";
                     if(question.includes("重さを求めましょう")){
-                        // n1/d1 unit1の重さがn2/d2 kg → 1unit1の重さ = n2/d2 ÷ n1/d1
                         return{q:`${frac(n1,d1)}${unit1}の重さが${frac(n2,d2)}${unit2}のホースがあります。${question}`,correctFormula:{n1:n2,d1:d2,op:"÷",n2:n1,d2:d1},type:'formula'};
                     }else{
-                        // n1/d1 unit1の重さがn2/d2 kg → 1kgの長さ = n1/d1 ÷ n2/d2
                         return{q:`${frac(n1,d1)}${unit1}の重さが${frac(n2,d2)}${unit2}のホースがあります。${question}`,correctFormula:{n1:n1,d1:d1,op:"÷",n2:n2,d2:d2},type:'formula'};
                     }
                 }
                 case 2:{
-                    // 米の重さ問題（修正版：正しい答えの設定）
                     const[n1,d1]=randFracReduced(6,10);
                     const[n2,d2]=randFracReduced(6,10);
                     const question=R(1,2)===1?"１Ｌの重さを求めましょう":"１ｋｇのかさを求めましょう";
                     if(question==="１Ｌの重さを求めましょう"){
-                        // 米n1/d1Lの重さがn2/d2kg → 1Lの重さ = n2/d2 ÷ n1/d1
                         return{q:`米${frac(n1,d1)}Lの重さを量ったら${frac(n2,d2)}ｋｇでした。${question}`,correctFormula:{n1:n2,d1:d2,op:"÷",n2:n1,d2:d1},type:'formula'};
                     }else{
-                        // 米n1/d1Lの重さがn2/d2kg → 1kgのかさ = n1/d1 ÷ n2/d2
                         return{q:`米${frac(n1,d1)}Lの重さを量ったら${frac(n2,d2)}ｋｇでした。${question}`,correctFormula:{n1:n1,d1:d1,op:"÷",n2:n2,d2:d2},type:'formula'};
                     }
                 }
             }
         }
         case 6:{
-            // 小数÷分数×整数のような混合計算（約分しやすい数値を使用）
             const type=R(1,3);
             switch(type){
                 case 1:{
-                    // 小数÷分数×整数
                     const decimal=(R(10,50)/10);
                     const[n,d]=randFracReduced(6,10);
                     const integer=R(2,6);
                     return{q:`${decimal} ÷ ${frac(n,d)} × ${integer} =`,n:decimal*d*integer*10,d:n*10,type:'fraction',mixed:false};
                 }
                 case 2:{
-                    // 整数×分数÷小数
                     const integer=R(3,8);
                     const[n,d]=randFracReduced(6,10);
                     const decimal=(R(10,30)/10);
                     return{q:`${integer} × ${frac(n,d)} ÷ ${decimal} =`,n:integer*n*10,d:d*decimal*10,type:'fraction',mixed:false};
                 }
                 case 3:{
-                    // 分数×小数÷整数
                     const[n,d]=randFracReduced(6,10);
                     const decimal=(R(10,40)/10);
                     const integer=R(2,5);
@@ -997,26 +1514,21 @@ function generateProblem(lv){
             }
         }
         case 7:{
-            // 分数で表しましょう（約分しやすい数値を使用）
             const type=R(1,4);
             switch(type){
                 case 1:{
-                    // 秒を分に変換（約分しやすい秒数）
                     const seconds=[6,8,10,12,15,18,20,24,30,36,40,45,48][R(0,12)];
                     return{q:`${seconds}秒は何分ですか？`,n:seconds,d:60,u:"分",type:'fraction',mixed:false};
                 }
                 case 2:{
-                    // 分を時間に変換（約分しやすい分数）
                     const minutes=[6,8,10,12,15,18,20,24,30,36,40,45,48][R(0,12)];
                     return{q:`${minutes}分は何時間ですか？`,n:minutes,d:60,u:"時間",type:'fraction',mixed:false};
                 }
                 case 3:{
-                    // 時間を日に変換（約分しやすい時間数）
                     const hours=[2,3,4,6,8,12,16,18,20][R(0,8)];
                     return{q:`${hours}時間は何日ですか？`,n:hours,d:24,u:"日",type:'fraction',mixed:false};
                 }
                 case 4:{
-                    // 時間と分を時間に変換（約分しやすい分数）
                     const hours=R(1,3);
                     const minutes=[10,12,15,18,20,24,30,36,40,45][R(0,9)];
                     const totalMinutes=hours*60+minutes;
@@ -1025,31 +1537,25 @@ function generateProblem(lv){
             }
         }
         case 8:{
-            // 分数を使った文章題（修正版：約分しやすい数字を使用し、時計問題を追加）
             const type=R(1,3);
             switch(type){
                 case 1:{
-                    // マラソン問題（約分しやすい数字を使用）
-                    const distance=[24,30,36,42,48,54,60][R(0,6)]; // 約分しやすい距離
+                    const distance=[24,30,36,42,48,54,60][R(0,6)];
                     const hours=R(2,4);
-                    const minutes=[15,20,30,40,45][R(0,4)]; // 約分しやすい分数になる分を選択
+                    const minutes=[15,20,30,40,45][R(0,4)];
                     const totalMinutes=hours*60+minutes;
                     return{q:`マラソンで${distance}ｋｍを${hours}時間${minutes}分で走りました。時速何ｋｍですか？`,n:distance*60,d:totalMinutes,u:"ｋｍ",type:'fraction',mixed:false};
                 }
                 case 2:{
-                    // 一般的な速度問題（約分しやすい数字を使用）
-                    const distance=[24,30,36,42,48,54,60][R(0,6)]; // 約分しやすい距離
+                    const distance=[24,30,36,42,48,54,60][R(0,6)];
                     const hours=R(1,3);
-                    const minutes=[12,15,18,20,24,30,36,40,45][R(0,8)]; // 約分しやすい分数になる分
+                    const minutes=[12,15,18,20,24,30,36,40,45][R(0,8)];
                     const totalMinutes=hours*60+minutes;
                     return{q:`${distance}ｋｍを${hours}時間${minutes}分で移動しました。時速何ｋｍですか？`,n:distance*60,d:totalMinutes,u:"ｋｍ",type:'fraction',mixed:false};
                 }
                 case 3:{
-                    // 時計の進み方問題（新規追加）
-                    const progressSeconds=[6,8,10,12,15,18,20,24][R(0,7)]; // 約分しやすい秒数
-                    const targetMinutes=[6,8,10,12,15,18,20,24][R(0,7)]; // 約分しやすい分数
-                    // progressSeconds秒を分数で表すと progressSeconds/60 分
-                    // targetMinutes分進むのに必要な日数 = targetMinutes ÷ (progressSeconds/60) = targetMinutes × 60 ÷ progressSeconds
+                    const progressSeconds=[6,8,10,12,15,18,20,24][R(0,7)];
+                    const targetMinutes=[6,8,10,12,15,18,20,24][R(0,7)];
                     const answerNumerator=targetMinutes*60;
                     const answerDenominator=progressSeconds;
                     return{q:`1日に${progressSeconds}秒ずつ進む時計があります。この時計は何日で${targetMinutes}分進みますか？${progressSeconds}秒を分数で表して計算して答えましょう。`,n:answerNumerator,d:answerDenominator,u:"日",type:'fraction',mixed:false};
@@ -1057,17 +1563,14 @@ function generateProblem(lv){
             }
         }
         case 9:{
-            // 分数の倍（約分しやすい数値を使用）
             const type=R(1,2);
             switch(type){
                 case 1:{
-                    // リボンの倍数問題
                     const[n1,d1]=randFracReduced(6,10);
                     const[n2,d2]=randFracReduced(6,10);
                     return{q:`赤いリボンは${frac(n1,d1)}ｍです。青いリボンは${frac(n2,d2)}ｍです。青いリボンは赤いリボンの何倍ですか？`,n:n2*d1,d:d2*n1,u:"倍",type:'fraction',mixed:false};
                 }
                 case 2:{
-                    // 一般的な倍数問題
                     const[n1,d1]=randFracReduced(6,10);
                     const[n2,d2]=randFracReduced(6,10);
                     const item=["ひも","テープ","板"][R(0,2)];
@@ -1076,19 +1579,16 @@ function generateProblem(lv){
             }
         }
         case 10:{
-            // もとにする大きさを求める問題（修正版：分子を1に固定）
             const type=R(1,2);
             switch(type){
                 case 1:{
-                    // 本と雑誌の問題（分子を1に固定）
                     const price=R(600,1200);
-                    const d=R(2,10); // 分母のみランダム
+                    const d=R(2,10);
                     return{q:`${price}円の本を買いました。この本の値段は雑誌の値段の${frac(1,d)}倍です。雑誌の値段を求めましょう。`,n:price*d,d:1,u:"円",type:'fraction',mixed:false};
                 }
                 case 2:{
-                    // 一般的なもとの量問題（分子を1に固定）
                     const amount=R(200,800);
-                    const d=R(2,10); // 分母のみランダム
+                    const d=R(2,10);
                     const item=["ペン","ノート","消しゴム"][R(0,2)];
                     return{q:`${amount}円の${item}を買いました。この${item}の値段は別の商品の${frac(1,d)}倍です。別の商品の値段を求めましょう。`,n:amount*d,d:1,u:"円",type:'fraction',mixed:false};
                 }
@@ -1097,9 +1597,8 @@ function generateProblem(lv){
     }
 }
 
-// 修正された selectLevel 関数
 function selectLevel(level){
-    state.level = level; // レベルを正しく設定
+    state.level = level;
     state.score = 0;
     state.lvCount = 0;
     state.totalQ = 0;
@@ -1107,7 +1606,9 @@ function selectLevel(level){
     state.selectQCount = 0;
     state.selectCorrectCount = 0;
     state.sessionPoints = 0;
-    state.answerSubmitted = false; // 回答送信フラグをリセット
+    state.answerSubmitted = false;
+    state.processingLevelUp = false;
+    state.processingBonus = false;
     
     $("start").style.display = "none";
     $("levelSelect").style.display = "none";
@@ -1129,7 +1630,7 @@ function selectLevel(level){
 function selectMode(mode){
     state.mode=mode;
     state.score=0;
-    state.level=1; // 練習モード等では1から開始
+    state.level=1;
     state.lvCount=0;
     state.totalQ=0;
     state.qNum=0;
@@ -1137,14 +1638,15 @@ function selectMode(mode){
     state.hiddenQ=0;
     state.selectCorrectCount=0;
     state.sessionPoints=0;
-    state.answerSubmitted=false; // 回答送信フラグをリセット
+    state.answerSubmitted=false;
+    state.processingLevelUp=false;
+    state.processingBonus=false;
     
     $("start").style.display="none";
     $("levelSelect").style.display="none";
     $("game").style.display="block";
     
     if(mode==='select'){
-        // 選べるモードの場合はレベル選択画面に戻る
         $("game").style.display="none";
         showLevelSelect();
         return;
@@ -1191,8 +1693,17 @@ function backToStart(){
     $("levelClear").style.display="none";
     $("hiddenClear").style.display="none";
     $("levelSelect").style.display="none";
+    $("bonusGame").style.display="none";
+    $("shootingGameContainer").style.display="none";
     $("start").style.display="block";
     stopTimer();
+    
+    if(shootingGameState.isActive){
+        endShootingGame();
+    }
+    
+    state.processingLevelUp = false;
+    state.processingBonus = false;
     
     if(state.sessionPoints>0){
         $("sessionPoints").style.display="block";
@@ -1202,6 +1713,16 @@ function backToStart(){
 function backToLevelSelect(){
     $("game").style.display="none";
     $("levelClear").style.display="none";
+    $("bonusGame").style.display="none";
+    $("shootingGameContainer").style.display="none";
+    
+    if(shootingGameState.isActive){
+        endShootingGame();
+    }
+    
+    state.processingLevelUp = false;
+    state.processingBonus = false;
+    
     showLevelSelect();
 }
 
@@ -1222,8 +1743,8 @@ function updateLevelIndicator(){
         for(let i=1;i<=10;i++){
             const dot=document.createElement("div");
             dot.className="level-dot";
-            if(i<state.level||(i===state.level&&state.totalQ%5===0&&state.totalQ>0))dot.classList.add("completed");
-            if(i===state.level)dot.classList.add("current");
+            if(i < state.level) dot.classList.add("completed");
+            if(i === state.level) dot.classList.add("current");
             dot.textContent=i;
             indicator.appendChild(dot);
         }
@@ -1256,8 +1777,8 @@ function updateProgressBar(){
         progress=(state.lvCount/5)*100;
         $("levelProgress").textContent=`このレベル: ${state.lvCount}/5問正解`;
     }else if(state.mode==='summary'){
-        progress=(state.totalQ/50)*100;
-        $("levelProgress").textContent="";
+        progress=(state.lvCount/5)*100;
+        $("levelProgress").textContent=`レベル${state.level}: ${state.lvCount}/5問正解`;
     }else if(state.mode==='hidden'){
         progress=(state.hiddenQ/10)*100;
         $("levelProgress").textContent="";
@@ -1269,9 +1790,7 @@ function updateProgressBar(){
     progressBar.style.width=progress+"%";
 }
 
-// 入力フィールドと送信ボタンを無効化する関数
 function disableInputs(){
-    // 入力フィールドを無効化
     $("n").disabled = true;
     $("d").disabled = true;
     $("mw").disabled = true;
@@ -1284,14 +1803,11 @@ function disableInputs(){
     $("f2n").disabled = true;
     $("f2d").disabled = true;
     
-    // 送信ボタンを無効化
     document.querySelectorAll('.submit-btn').forEach(btn => btn.disabled = true);
     document.querySelectorAll('.comparison-btn').forEach(btn => btn.disabled = true);
 }
 
-// 入力フィールドと送信ボタンを有効化する関数
 function enableInputs(){
-    // 入力フィールドを有効化
     $("n").disabled = false;
     $("d").disabled = false;
     $("mw").disabled = false;
@@ -1304,7 +1820,6 @@ function enableInputs(){
     $("f2n").disabled = false;
     $("f2d").disabled = false;
     
-    // 送信ボタンを有効化
     document.querySelectorAll('.submit-btn').forEach(btn => btn.disabled = false);
     document.querySelectorAll('.comparison-btn').forEach(btn => btn.disabled = false);
 }
@@ -1312,14 +1827,13 @@ function enableInputs(){
 function newProblem(){
     state.prob=generateProblem(state.level);
     state.unit=state.prob.u||"";
-    state.answerSubmitted=false; // 新しい問題では回答送信フラグをリセット
+    state.answerSubmitted=false;
     
     $("q").innerHTML=state.prob.q;
     $("monster").textContent=monsters[state.level-1];
     $("lv").textContent=state.level;
     $("lvInfo").textContent=lvNames[state.level-1];
     
-    // 単位表示の更新
     if(state.unit){
         $("fUnit").textContent=state.unit;
         $("mUnit").textContent=state.unit;
@@ -1333,7 +1847,6 @@ function newProblem(){
         $("nUnit").style.display="none";
     }
     
-    // 入力フィールドのクリア
     $("n").value="";
     $("d").value="";
     $("mw").value="";
@@ -1346,10 +1859,8 @@ function newProblem(){
     $("f2n").value="";
     $("f2d").value="";
     
-    // 入力フィールドとボタンを有効化
     enableInputs();
     
-    // 表示の制御
     if(state.prob.type==='comparison'){
         $("answerSections").style.display="none";
         $("formulaSection").style.display="none";
@@ -1369,199 +1880,20 @@ function newProblem(){
     
     $("wrong").style.display="none";
     
-    // カーソル位置を適切な入力欄に設定（レベル5では最初の分母に設定）
     setTimeout(() => {
         if(state.prob.type==='formula'){
-            $("f1d").focus(); // レベル5では最初の分母にカーソルを設定
+            $("f1d").focus();
         }else if(state.prob.type!=='comparison'){
             $("d").focus();
         }
     }, 100);
 }
 
-function submitFormula(){
-    if(state.answerSubmitted) return; // 既に回答済みの場合は処理しない
-    
-    const f1n=parseInt($("f1n").value);
-    const f1d=parseInt($("f1d").value);
-    const operator=$("operator").value;
-    const f2n=parseInt($("f2n").value);
-    const f2d=parseInt($("f2d").value);
-    
-    if(isNaN(f1n)||isNaN(f1d)||!operator||isNaN(f2n)||isNaN(f2d)){
-        alert('すべての項目を入力してください');
-        return;
-    }
-    
-    state.answerSubmitted=true; // 回答送信フラグを設定
-    disableInputs(); // 入力を無効化
-    
-    const correct=state.prob.correctFormula;
-    if(f1n===correct.n1&&f1d===correct.d1&&operator===correct.op&&f2n===correct.n2&&f2d===correct.d2){
-        handleCorrect();
-    }else{
-        handleWrong(`${correct.n1}/${correct.d1} ${correct.op} ${correct.n2}/${correct.d2}`);
-    }
-}
-
-function selectComparison(btn,choice){
-    if(state.answerSubmitted) return; // 既に回答済みの場合は処理しない
-    
-    document.querySelectorAll('.comparison-btn').forEach(b=>b.classList.remove('selected'));
-    btn.classList.add('selected');
-    state.selectedComparison=choice;
-}
-
-function submitComparison(){
-    if(state.answerSubmitted) return; // 既に回答済みの場合は処理しない
-    
-    if(!state.selectedComparison){
-        alert('選択肢を選んでください');
-        return;
-    }
-    
-    state.answerSubmitted=true; // 回答送信フラグを設定
-    disableInputs(); // 入力を無効化
-    
-    let correct=false;
-    const questionType=state.prob.questionType||"大きい";
-    
-    if(questionType==="大きい"){
-        if(state.selectedComparison==='left'&&state.prob.left>state.prob.right)correct=true;
-        if(state.selectedComparison==='right'&&state.prob.left<state.prob.right)correct=true;
-        if(state.selectedComparison==='equal'&&state.prob.left===state.prob.right)correct=true;
-    }else{
-        if(state.selectedComparison==='left'&&state.prob.left<state.prob.right)correct=true;
-        if(state.selectedComparison==='right'&&state.prob.left>state.prob.right)correct=true;
-        if(state.selectedComparison==='equal'&&state.prob.left===state.prob.right)correct=true;
-    }
-    
-    if(correct){
-        handleCorrect();
-    }else{
-        let correctAnswer;
-        if(questionType==="大きい"){
-            correctAnswer=state.prob.left>state.prob.right?'左がわ':
-                         state.prob.left<state.prob.right?'右がわ':'同じ';
-        }else{
-            correctAnswer=state.prob.left<state.prob.right?'左がわ':
-                         state.prob.left>state.prob.right?'右がわ':'同じ';
-        }
-        handleWrong(correctAnswer);
-    }
-}
-
-function submitFraction(){
-    if(state.answerSubmitted) return; // 既に回答済みの場合は処理しない
-    
-    const n=parseInt($("n").value);
-    const d=parseInt($("d").value);
-    if(isNaN(n)||isNaN(d)||d<=0){
-        alert('正しい数値を入力してください');
-        return;
-    }
-    
-    state.answerSubmitted=true; // 回答送信フラグを設定
-    disableInputs(); // 入力を無効化
-    
-    checkFractionAnswer(n,d);
-}
-
-function submitMixed(){
-    if(state.answerSubmitted) return; // 既に回答済みの場合は処理しない
-    
-    const w=parseInt($("mw").value)||0;
-    const n=parseInt($("mn").value)||0;
-    const d=parseInt($("md").value);
-    if(isNaN(d)||d<=0){
-        alert('正しい数値を入力してください');
-        return;
-    }
-    
-    state.answerSubmitted=true; // 回答送信フラグを設定
-    disableInputs(); // 入力を無効化
-    
-    const improperN=w*d+n;
-    checkFractionAnswer(improperN,d);
-}
-
-function submitNormal(){
-    if(state.answerSubmitted) return; // 既に回答済みの場合は処理しない
-    
-    const input=$("norm").value.trim();
-    if(!input){
-        alert('答えを入力してください');
-        return;
-    }
-    
-    state.answerSubmitted=true; // 回答送信フラグを設定
-    disableInputs(); // 入力を無効化
-    
-    let userAnswer;
-    if(input.includes('/')){
-        const parts=input.split('/');
-        if(parts.length!==2){
-            alert('分数は「分子/分母」の形で入力してください');
-            state.answerSubmitted=false; // エラーの場合はフラグをリセット
-            enableInputs(); // 入力を再有効化
-            return;
-        }
-        const n=parseInt(parts[0]);
-        const d=parseInt(parts[1]);
-        if(isNaN(n)||isNaN(d)||d<=0){
-            alert('正しい数値を入力してください');
-            state.answerSubmitted=false; // エラーの場合はフラグをリセット
-            enableInputs(); // 入力を再有効化
-            return;
-        }
-        checkFractionAnswer(n,d);
-        return;
-    }else{
-        userAnswer=parseFloat(input);
-        if(isNaN(userAnswer)){
-            alert('正しい数値を入力してください');
-            state.answerSubmitted=false; // エラーの場合はフラグをリセット
-            enableInputs(); // 入力を再有効化
-            return;
-        }
-    }
-    
-    const[correctN,correctD]=simplify(state.prob.n,state.prob.d);
-    const correctDecimal=correctN/correctD;
-    
-    if(Math.abs(userAnswer-correctDecimal)<0.001){
-        handleCorrect();
-    }else{
-        handleWrong(formatAnswer(state.prob.n,state.prob.d,state.unit));
-    }
-}
-
-function checkFractionAnswer(userN,userD){
-    const[correctN,correctD]=simplify(state.prob.n,state.prob.d);
-    
-    // 約分されているかチェック
-    const userGcd = gcd(Math.abs(userN), Math.abs(userD));
-    
-    if(userGcd > 1){
-        // 約分されていない場合は間違いとして扱う
-        const[simplifiedN,simplifiedD]=simplify(userN,userD);
-        $("almostMsg").style.display="block";
-        $("almostText").textContent=`${userN}/${userD} は約分すると ${simplifiedN}/${simplifiedD} になります`;
-        $("correctAnswer").style.display="block";
-        $("correctText").textContent=formatAnswer(state.prob.n,state.prob.d,state.unit);
-        $("wrong").style.display="block";
-        return;
-    }
-    
-    // 約分されている場合のみ正解判定
-    if(userN===correctN&&userD===correctD){
-        handleCorrect();
-    }else{
-        handleWrong(formatAnswer(state.prob.n,state.prob.d,state.unit));
-    }
-}
-
+// 修正されたhandleCorrect関数（まとめモード対応版）
 async function handleCorrect(){
+    // 重複実行防止
+    if(state.processingLevelUp || state.processingBonus) return;
+    
     state.score++;
     $("score").textContent=state.score;
     
@@ -1574,34 +1906,70 @@ async function handleCorrect(){
     if(state.mode==='practice'){
         state.lvCount++;
         if(state.lvCount>=5){
+            state.processingLevelUp = true;
+            
             state.completed.add(state.level);
             const levelPoints=calculateLevelPoints(state.level,state.mode);
             await addPoints(levelPoints);
             
             $("monster").classList.add("level-up");
-            setTimeout(()=>$("monster").classList.remove("level-up"),3000);
             
-            if(state.level<10){
-                state.level++;
-                state.lvCount=0;
-            }else{
-                setTimeout(()=>{
+            setTimeout(async ()=>{
+                $("monster").classList.remove("level-up");
+                
+                if(state.level<10){
+                    showBonusGame(state.level);
+                }else{
+                    state.processingLevelUp = false;
                     alert('練習モード全レベル完了！おめでとうございます！');
                     backToStart();
-                },2000);
-                return;
-            }
+                }
+            },3000);
+            
+            return;
         }
     }else if(state.mode==='summary'){
         state.totalQ++;
-        if(state.totalQ>=50){
-            stopTimer();
-            const clearTime=getElapsedTime();
-            enableHiddenStage();
-            setTimeout(()=>showClear(clearTime),1000);
-            return;
-        }else if(state.totalQ%5===0){
+        state.lvCount++;
+        
+        if(state.lvCount >= 5){
+            // レベルアップ処理
+            state.processingLevelUp = true;
             state.level++;
+            state.lvCount = 0;
+            
+            $("monster").classList.add("level-up");
+            setTimeout(()=>$("monster").classList.remove("level-up"), 3000);
+            
+            // ボーナスゲーム条件チェック（5問ごと）
+            if(state.totalQ % 5 === 0 && !state.processingBonus){
+                setTimeout(()=>{
+                    state.processingLevelUp = false;
+                    showBonusGame(state.level - 1);
+                }, 1500);
+                return;
+            }
+            
+            // 全10レベル完了チェック
+            if(state.level > 10){
+                stopTimer();
+                const clearTime = getElapsedTime();
+                enableHiddenStage();
+                setTimeout(()=>{
+                    state.processingLevelUp = false;
+                    showClear(clearTime);
+                }, 1000);
+                return;
+            }
+            
+            // 通常のレベルアップ後の処理
+            setTimeout(()=>{
+                state.processingLevelUp = false;
+                updateLevelIndicator();
+                updateProgressBar();
+                newProblem();
+            }, 1500);
+            return;
         }
     }else if(state.mode==='hidden'){
         state.hiddenQ++;
@@ -1614,7 +1982,6 @@ async function handleCorrect(){
         state.selectQCount++;
         state.selectCorrectCount++;
         
-        // 10問連続正解でレベルクリア
         if(state.selectCorrectCount>=10){
             state.clearedLevels.add(state.level);
             saveClearedLevels();
@@ -1642,7 +2009,12 @@ function handleWrong(correctAnswer){
         $("selectMsg").style.display="none";
         $("backToSelectBtn").style.display="none";
         state.lvCount=0;
-    }else if(state.mode==='summary'||state.mode==='hidden'){
+    }else if(state.mode==='summary'){
+        stopTimer();
+        const finalTime=getElapsedTime();
+        setTimeout(()=>showGameOver(finalTime),2000);
+        return;
+    }else if(state.mode==='hidden'){
         stopTimer();
         const finalTime=getElapsedTime();
         setTimeout(()=>showGameOver(finalTime),2000);
@@ -1673,15 +2045,25 @@ function next(){
 async function showGameOver(finalTime){
     $("game").style.display="none";
     $("gameover").style.display="block";
-    $("finalLv").textContent=state.level;
-    $("finalScore1").textContent=state.score;
+    
+    if(state.mode==='summary'){
+        $("summaryGameoverInfo").style.display="block";
+        $("normalGameoverInfo").style.display="none";
+        $("finalLv").textContent=Math.ceil(state.totalQ/5) || 1;
+        $("finalScore1").textContent=state.totalQ;
+    }else{
+        $("summaryGameoverInfo").style.display="none";
+        $("normalGameoverInfo").style.display="block";
+        $("finalLv").textContent=state.level;
+        $("finalScore1").textContent=state.score;
+    }
     
     if(state.mode==='summary'||state.mode==='hidden'){
         $("finalTime").style.display="block";
         $("finalTimeValue").textContent=formatTime(finalTime);
         
-        if(state.score > 0){
-            const gameoverPoints=state.level*20;
+        if(state.score > 0 || state.totalQ > 0){
+            const gameoverPoints = state.mode==='summary' ? state.totalQ*10 : state.level*20;
             $("gameoverPoints").style.display="block";
             $("gameoverPointsValue").textContent=gameoverPoints;
             await addPoints(gameoverPoints);
@@ -1738,7 +2120,23 @@ async function showHiddenClear(){
 }
 
 function restart(){
+    state.score=0;
+    state.level=1;
+    state.lvCount=0;
+    state.totalQ=0;
+    state.qNum=0;
+    state.selectQCount=0;
+    state.hiddenQ=0;
+    state.selectCorrectCount=0;
     state.sessionPoints=0;
+    state.answerSubmitted=false;
+    state.processingLevelUp=false;
+    state.processingBonus=false;
+    state.selectedComparison=null;
+    
+    stopTimer();
+    state.startTime=null;
+    
     backToStart();
 }
 
@@ -1810,6 +2208,178 @@ try{
         enableHiddenStage();
     }
 }catch(e){}
+
+function submitFraction(){
+    if(state.answerSubmitted) return; // 重複送信防止
+    
+    const n = parseInt($("n").value);
+    const d = parseInt($("d").value);
+    
+    if(isNaN(n) || isNaN(d) || d === 0){
+        alert("正しい数値を入力してください");
+        return;
+    }
+    
+    state.answerSubmitted = true;
+    disableInputs(); // 回答送信後に無効化
+    
+    const[sn,sd]=simplify(n,d);
+    const[correctN,correctD]=simplify(state.prob.n,state.prob.d);
+    
+    if(sn===correctN&&sd===correctD){
+        handleCorrect();
+    }else{
+        const g=gcd(Math.abs(n),Math.abs(d));
+        if(g>1){
+            $("almostMsg").style.display="block";
+            $("almostText").textContent=`${n}と${d}は${g}で約分できます。答えは${sn}/${sd}です。`;
+            $("correctAnswer").style.display="none";
+        }else{
+            handleWrong(formatAnswer(state.prob.n,state.prob.d,state.unit));
+        }
+    }
+}
+
+function submitMixed(){
+    if(state.answerSubmitted) return; // 重複送信防止
+    
+    const w = parseInt($("mw").value) || 0;
+    const n = parseInt($("mn").value) || 0;
+    const d = parseInt($("md").value);
+    
+    if(isNaN(d) || d === 0){
+        alert("正しい数値を入力してください");
+        return;
+    }
+    
+    state.answerSubmitted = true;
+    disableInputs(); // 回答送信後に無効化
+    
+    const improperN = w * d + n;
+    const[sn,sd]=simplify(improperN,d);
+    const[correctN,correctD]=simplify(state.prob.n,state.prob.d);
+    
+    if(sn===correctN&&sd===correctD){
+        handleCorrect();
+    }else{
+        const g=gcd(Math.abs(improperN),Math.abs(d));
+        if(g>1){
+            $("almostMsg").style.display="block";
+            $("almostText").textContent=`約分できます。正解は${formatAnswer(state.prob.n,state.prob.d,state.unit)}です。`;
+            $("correctAnswer").style.display="none";
+        }else{
+            handleWrong(formatAnswer(state.prob.n,state.prob.d,state.unit));
+        }
+    }
+}
+
+function submitNormal(){
+    if(state.answerSubmitted) return; // 重複送信防止
+    
+    const answer = $("norm").value.trim();
+    
+    if(!answer){
+        alert("答えを入力してください");
+        return;
+    }
+    
+    state.answerSubmitted = true;
+    disableInputs(); // 回答送信後に無効化
+    
+    const[correctN,correctD]=simplify(state.prob.n,state.prob.d);
+    let correctAnswer;
+    
+    if(correctD===1){
+        correctAnswer=correctN.toString();
+    }else{
+        correctAnswer=(correctN/correctD).toString();
+    }
+    
+    if(answer===correctAnswer||answer===correctAnswer+state.unit){
+        handleCorrect();
+    }else{
+        handleWrong(correctAnswer+state.unit);
+    }
+}
+
+function selectComparison(btn, choice){
+    if(state.answerSubmitted) return; // 重複送信防止
+    
+    document.querySelectorAll('.comparison-btn').forEach(b=>b.classList.remove('selected'));
+    btn.classList.add('selected');
+    state.selectedComparison=choice;
+}
+
+function submitComparison(){
+    if(state.answerSubmitted) return; // 重複送信防止
+    
+    if(!state.selectedComparison){
+        alert("選択肢を選んでください");
+        return;
+    }
+    
+    state.answerSubmitted = true;
+    disableInputs(); // 回答送信後に無効化
+    
+    let correct=false;
+    
+    if(state.prob.questionType){
+        // 「大きい」「小さい」を問う問題
+        if(state.prob.questionType==="大きい"){
+            correct=(state.prob.left>state.prob.right&&state.selectedComparison==='left')||
+                   (state.prob.right>state.prob.left&&state.selectedComparison==='right');
+        }else if(state.prob.questionType==="小さい"){
+            correct=(state.prob.left<state.prob.right&&state.selectedComparison==='left')||
+                   (state.prob.right<state.prob.left&&state.selectedComparison==='right');
+        }
+    }else{
+        // 通常の大小比較
+        correct=(state.prob.left>state.prob.right&&state.selectedComparison==='left')||
+               (state.prob.right>state.prob.left&&state.selectedComparison==='right');
+    }
+    
+    if(correct){
+        handleCorrect();
+    }else{
+        let correctChoice;
+        if(state.prob.questionType){
+            if(state.prob.questionType==="大きい"){
+                correctChoice=state.prob.left>state.prob.right?"左がわ":"右がわ";
+            }else{
+                correctChoice=state.prob.left<state.prob.right?"左がわ":"右がわ";
+            }
+        }else{
+            correctChoice=state.prob.left>state.prob.right?"左がわ":"右がわ";
+        }
+        handleWrong(correctChoice);
+    }
+}
+
+function submitFormula(){
+    if(state.answerSubmitted) return; // 重複送信防止
+    
+    const f1n = parseInt($("f1n").value);
+    const f1d = parseInt($("f1d").value);
+    const op = $("operator").value;
+    const f2n = parseInt($("f2n").value);
+    const f2d = parseInt($("f2d").value);
+    
+    if(isNaN(f1n) || isNaN(f1d) || !op || isNaN(f2n) || isNaN(f2d) || f1d === 0 || f2d === 0){
+        alert("すべての項目を正しく入力してください");
+        return;
+    }
+    
+    state.answerSubmitted = true;
+    disableInputs(); // 回答送信後に無効化
+    
+    const correct = state.prob.correctFormula;
+    
+    if(f1n===correct.n1&&f1d===correct.d1&&op===correct.op&&f2n===correct.n2&&f2d===correct.d2){
+        handleCorrect();
+    }else{
+        handleWrong(`${frac(correct.n1,correct.d1)} ${correct.op} ${frac(correct.n2,correct.d2)}`);
+    }
+}
 
 document.addEventListener('keydown',function(e){
     if(e.key==='Enter'&&$("game").style.display==="block"&&!state.answerSubmitted){
