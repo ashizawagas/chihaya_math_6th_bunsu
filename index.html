@@ -1164,16 +1164,16 @@ function updateShootingGame() {
         player.style.left = shootingGameState.playerPosition + '%';
     }
     
-    // 分数の移動
-    shootingGameState.fallingFractions.forEach((fraction, index) => {
-        fraction.y += 4;
-        fraction.element.style.top = fraction.y + 'px';
-        
-        if (fraction.y > 400) {
-            fraction.element.remove();
-            shootingGameState.fallingFractions.splice(index, 1);
-        }
-    });
+   // 分数の移動
+shootingGameState.fallingFractions.forEach((fraction, index) => {
+    fraction.y += 3.2;  // 4 × 0.8 = 3.2（10%遅く）
+    fraction.element.style.top = fraction.y + 'px';
+    
+    if (fraction.y > 400) {
+        fraction.element.remove();
+        shootingGameState.fallingFractions.splice(index, 1);
+    }
+});
     
     // 弾の移動
     shootingGameState.bullets.forEach((bullet, index) => {
@@ -1214,10 +1214,10 @@ function createFallingFraction() {
     fractionElement.style.left = Math.random() * 90 + '%';
     fractionElement.style.top = '0px';
     fractionElement.innerHTML = `
-        <div style="font-size: 0.7em;">${numerator}</div>
-        <div style="border-top: 1px solid white; margin: 2px 0;"></div>
-        <div style="font-size: 0.7em;">${denominator}</div>
-    `;
+    <div style="font-size: 0.7em; color: black;">${numerator}</div>
+    <div style="border-top: 1px solid white; margin: 2px 0;"></div>
+    <div style="font-size: 0.7em; color: black;">${denominator}</div>
+`;
     
     fractionElement.style.background = 'linear-gradient(45deg, #feca57, #ff9ff3)';
     fractionElement.style.border = '2px solid white';
